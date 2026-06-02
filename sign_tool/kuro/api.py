@@ -29,6 +29,7 @@ from .constants import (
     SHARE_URL,
     SERVER_ID,
     SERVER_ID_NET,
+    NET_SERVER_ID_MAP,
 )
 
 logger = get_logger()
@@ -122,7 +123,9 @@ class KuroClient:
         if self.server_id:
             return self.server_id
         if self._is_net():
-            return SERVER_ID_NET
+            # 国际服: 根据 UID 前缀映射 serverId
+            prefix = int(self.uid) // 100000000
+            return NET_SERVER_ID_MAP.get(prefix, SERVER_ID_NET)
         return SERVER_ID
 
     async def login(self, mobile: str, code: str) -> dict[str, Any]:

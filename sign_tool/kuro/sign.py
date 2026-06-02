@@ -6,6 +6,7 @@ import asyncio
 from ..log import get_logger
 from .. import db
 from .api import KuroClient, KuroError, CODE_TOKEN_INVALID
+from .constants import PGR_GAME_ID
 
 logger = get_logger()
 
@@ -159,20 +160,21 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     except KuroError:
         pass  # Continue with default server ID
 
-    # Refresh data (and bat token if needed)
-    try:
-        await client.refresh_data()
-    except KuroError as e:
-        if "BAT" in e.message or e.code == 10903:
-            try:
-                await client.refresh_bat_token()
-                await client.refresh_data()
-            except KuroError as e2:
-                results.append(f"刷新数据失败: {e2.message}")
+    # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
+    if game_id != PGR_GAME_ID:
+        try:
+            await client.refresh_data()
+        except KuroError as e:
+            if "BAT" in e.message or e.code == 10903:
+                try:
+                    await client.refresh_bat_token()
+                    await client.refresh_data()
+                except KuroError as e2:
+                    results.append(f"刷新数据失败: {e2.message}")
+                    return results
+            else:
+                results.append(f"刷新数据失败: {e.message}")
                 return results
-        else:
-            results.append(f"刷新数据失败: {e.message}")
-            return results
 
     # Game sign
     results.append(await sign_game(client))

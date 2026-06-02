@@ -3,6 +3,15 @@ PGR_GAME_ID = 2
 SERVER_ID = "76402e5b20be2c39f095a152090afddc"
 SERVER_ID_NET = "919752ae5ea09c1ced910dd668a63ffb"
 
+# 国际服 serverId 映射 (UID 前缀 -> serverId)
+NET_SERVER_ID_MAP = {
+    5: "591d6af3a3090d8ea00d8f86cf6d7501",
+    6: "6eb2a235b30d05efd77bedb5cf60999e",
+    7: "86d52186155b148b5c138ceb41be9650",
+    8: "919752ae5ea09c1ced910dd668a63ffb",
+    9: "10cd7254d57e58ae560b15d51e34b4c",
+}
+
 MAIN_URL = "https://api.kurobbs.com"
 
 # sign
