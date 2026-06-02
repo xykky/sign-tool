@@ -231,6 +231,16 @@ systemctl restart sign-tool
 nano /opt/sign-tool/config.toml
 ```
 
+### 卸载
+
+```bash
+# 完全卸载
+sudo bash uninstall.sh
+
+# 卸载但保留配置和数据库（方便以后重新部署）
+sudo bash uninstall.sh --keep-data
+```
+
 ### Cloudflare 配置（可选）
 
 1. 添加域名到 Cloudflare
