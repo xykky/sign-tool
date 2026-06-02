@@ -1,13 +1,39 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.egg-info/
+*.egg
 dist/
 build/
-*.db
-config.toml
-.DS_Store
+eggs/
+*.whl
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+config.toml
+sign.db
+*.db
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
