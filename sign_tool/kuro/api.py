@@ -155,7 +155,7 @@ class KuroClient:
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
-        result = await self._authed_request(REFRESH_URL, data)
+        result = await self._authed_request(REFRESH_URL, data, need_token=True)
         code = result.get("code", -1)
         if code == CODE_BAT_TOKEN_INVALID:
             raise KuroError("BAT token 已失效", code=code)
