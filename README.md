@@ -24,7 +24,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/你的用户名/sign-tool.git
+git clone https://github.com/xykky/sign-tool.git
 cd sign-tool
 
 # 安装依赖
@@ -43,7 +43,7 @@ sign-tool web
 
 ```bash
 # 克隆项目
-git clone https://github.com/你的用户名/sign-tool.git
+git clone https://github.com/xykky/sign-tool.git
 cd sign-tool
 
 # 运行一键安装脚本
