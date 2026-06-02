@@ -43,6 +43,11 @@ def _get_config() -> Config:
     return _config
 
 
+def _reload_config(path: str) -> None:
+    global _config
+    _config = load_config(path)
+
+
 @app.on_event("startup")
 async def startup():
     global _config
@@ -142,10 +147,12 @@ async def login(req: Request):
             from ..kuro.login import login_kuro
             game = body.get("game", "waves")
             account = await login_kuro(phone, code, game, config)
+            _reload_config(config.config_path)
             return {"ok": True, "msg": "登录成功", "uid": account.uid, "game": game}
         elif platform == "tajiduo":
             from ..tajiduo.login import login_tajiduo
             account = await login_tajiduo(phone, code, config)
+            _reload_config(config.config_path)
             return {"ok": True, "msg": "登录成功", "center_uid": account.center_uid}
         else:
             return JSONResponse({"ok": False, "msg": f"不支持的平台: {platform}"})
