@@ -230,6 +230,13 @@ def save_tajiduo_account(path: str, account: TajiduoAccount) -> None:
         lines.insert(insert_idx + 1, "[[tajiduo.accounts]]")
         insert_idx += 2
 
+        lines.insert(insert_idx, f'refresh_token = "{account.refresh_token}"')
+        lines.insert(insert_idx + 1, f'center_uid = "{account.center_uid}"')
+        if account.dev_code:
+            lines.insert(insert_idx + 2, f'dev_code = "{account.dev_code}"')
+        p.write_text("\n".join(lines), "utf-8")
+        return
+
     lines.append(f'refresh_token = "{account.refresh_token}"')
     lines.append(f'center_uid = "{account.center_uid}"')
     if account.dev_code:
