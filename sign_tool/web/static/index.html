@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>签到工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .card h2 {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+        .form-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            border-color: #4a90d9;
+        }
+        input[type="time"] { width: 120px; }
+        input[type="text"], input[type="tel"], input[type="password"] { flex: 1; min-width: 120px; }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-primary { background: #4a90d9; color: #fff; }
+        .btn-primary:hover { background: #357abd; }
+        .btn-success { background: #52c41a; color: #fff; }
+        .btn-success:hover { background: #45a817; }
+        .btn-danger { background: #ff4d4f; color: #fff; }
+        .btn-danger:hover { background: #e8383a; }
+        .btn-warning { background: #faad14; color: #fff; }
+        .btn-warning:hover { background: #d9a012; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #d9d9d9;
+            color: #666;
+        }
+        .btn-outline:hover { border-color: #4a90d9; color: #4a90d9; }
+
+        /* 消息提示 */
+        .msg {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .msg.ok { display: block; background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+        .msg.err { display: block; background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
+
+        /* 账号列表 */
+        .account-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .account-item:last-child { border-bottom: none; }
+        .account-info { flex: 1; }
+        .account-platform {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .platform-kuro { background: #e6f7ff; color: #1890ff; }
+        .platform-tajiduo { background: #fff7e6; color: #fa8c16; }
+        .account-uid { font-weight: 500; }
+        .account-detail { font-size: 12px; color: #999; }
+
+        /* 签到状态 */
+        .status-group {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+        .status-group-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #333;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        .status-kind { color: #666; }
+        .status-icon { font-size: 16px; }
+        .status-ok { color: #52c41a; }
+        .status-skip { color: #999; }
+        .status-fail { color: #ff4d4f; }
+        .status-progress { color: #1890ff; }
+
+        /* 签到进度 */
+        .sign-log {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: "Cascadia Code", "Fira Code", monospace;
+            font-size: 13px;
+            padding: 12px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            display: none;
+            margin-top: 12px;
+        }
+        .sign-log.show { display: block; }
+        .sign-log .log-error { color: #ff4d4f; }
+        .sign-log .log-skip { color: #999; }
+        .sign-log .log-progress { color: #1890ff; }
+        .sign-log .log-done { color: #52c41a; }
+
+        /* 定时配置 */
+        .schedule-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .schedule-status .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.on { background: #52c41a; }
+        .status-dot.off { background: #d9d9d9; }
+        .schedule-status .status-text {
+            font-size: 14px;
+            color: #333;
+        }
+        .schedule-status .status-detail {
+            font-size: 12px;
+            color: #999;
+        }
+        .schedule-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 空状态 */
+        .empty {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .card { padding: 16px; }
+            .form-row { flex-direction: column; }
+            .form-row input, .form-row select, .form-row button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <h1>签到工具</h1>
+
+    <!-- 登录 -->
+    <div class="card" id="login-card">
+        <h2>登录</h2>
+        <div class="form-row">
+            <select id="platform" onchange="onPlatformChange()">
+                <option value="kuro">库洛 (鸣潮/战双)</option>
+                <option value="tajiduo">塔吉多 (异环/幻塔)</option>
+            </select>
+            <select id="game">
+                <option value="waves">鸣潮</option>
+                <option value="pgr">战双</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <input id="phone" type="tel" placeholder="手机号" maxlength="11">
+            <input id="code" type="text" placeholder="验证码" maxlength="6">
+        </div>
+        <div class="form-row">
+            <button class="btn-outline" onclick="sendCode()" id="btn-send-code">发送验证码</button>
+            <button class="btn-primary" onclick="doLogin()" id="btn-login">登录</button>
+        </div>
+        <div id="login-msg" class="msg"></div>
+    </div>
+
+    <!-- 已登录账号 -->
+    <div class="card">
+        <h2>已登录账号</h2>
+        <div id="account-list">
+            <div class="empty">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 签到状态 -->
+    <div class="card">
+        <h2>今日签到状态</h2>
+        <div id="status-list">
+            <div class="empty">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 执行签到 -->
+    <div class="card">
+        <h2>执行签到</h2>
+        <div class="form-row">
+            <button class="btn-success" onclick="doSign()" id="btn-sign">开始签到</button>
+            <button class="btn-outline" onclick="refreshStatus()">刷新状态</button>
+        </div>
+        <div id="sign-log" class="sign-log"></div>
+    </div>
+
+    <!-- 定时配置 -->
+    <div class="card">
+        <h2>定时签到</h2>
+        <div id="schedule-status" class="schedule-status">
+            <span class="status-dot off"></span>
+            <div>
+                <div class="status-text">加载中...</div>
+                <div class="status-detail"></div>
+            </div>
+        </div>
+        <div class="schedule-actions">
+            <input type="time" id="sched-time" value="06:00">
+            <button class="btn-primary" onclick="saveConfig()" id="btn-save-sched">保存设置</button>
+            <button class="btn-warning" onclick="toggleSchedule()" id="btn-toggle-sched">启用定时</button>
+        </div>
+        <div id="config-msg" class="msg"></div>
+    </div>
+
+    <!-- 推送配置 -->
+    <div class="card">
+        <h2>推送通知</h2>
+        <div id="notify-status" class="schedule-status">
+            <span class="status-dot off"></span>
+            <div>
+                <div class="status-text">加载中...</div>
+                <div class="status-detail">签到完成后推送结果到手机</div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Server酱 SCKEY</label>
+            <input type="text" id="notify-sckey" placeholder="SCT0123456789abcdef...">
+        </div>
+        <div class="form-group">
+            <label>Telegram Bot Token</label>
+            <input type="text" id="notify-tg-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz...">
+        </div>
+        <div class="form-group">
+            <label>Telegram Chat ID</label>
+            <input type="text" id="notify-tg-chat" placeholder="123456789">
+        </div>
+        <div class="form-row">
+            <button class="btn-primary" onclick="saveNotify()">保存配置</button>
+            <button class="btn-outline" onclick="toggleNotify()" id="btn-toggle-notify">启用推送</button>
+            <button class="btn-outline" onclick="testNotify()">测试推送</button>
+        </div>
+        <div id="notify-msg" class="msg"></div>
+    </div>
+
+    <script>
+        // ===== 工具函数 =====
+        function showMsg(id, text, ok) {
+            var el = document.getElementById(id);
+            el.textContent = text;
+            el.className = 'msg ' + (ok ? 'ok' : 'err');
+            setTimeout(function() { el.className = 'msg'; }, 5000);
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== Geetest v4 验证码 =====
+        var GEETEST_SCRIPT_URL = 'https://static.geetest.com/v4/gt4.js';
+        var KURO_CAPTCHA_ID = 'ec4aa4174277d822d73f2442a165a2cd';
+
+        var geetestReady = false;
+        var showKuroCaptcha = null;
+        var captchaInitToken = 0;
+
+        function loadGeetestScript(useCacheBust) {
+            return new Promise(function(resolve, reject) {
+                if (typeof window.initGeetest4 === 'function') { resolve(); return; }
+                document.querySelectorAll('script[data-gt4-loader]').forEach(function(s) { s.remove(); });
+                var script = document.createElement('script');
+                script.src = GEETEST_SCRIPT_URL + (useCacheBust ? '?retry=' + Date.now() : '');
+                script.async = true;
+                script.dataset.gt4Loader = 'true';
+                script.onload = function() {
+                    typeof window.initGeetest4 === 'function' ? resolve() : reject(new Error('initGeetest4 unavailable'));
+                };
+                script.onerror = function() { script.remove(); reject(new Error('gt4 load failed')); };
+                document.head.appendChild(script);
+            });
+        }
+
+        function loadGeetestWithRetry() {
+            return loadGeetestScript(false).catch(function() {
+                return new Promise(function(resolve, reject) {
+                    setTimeout(function() { loadGeetestScript(true).then(resolve).catch(reject); }, 2000);
+                });
+            });
+        }
+
+        function initKuroCaptcha(phone) {
+            var token = ++captchaInitToken;
+            geetestReady = false;
+            showKuroCaptcha = null;
+
+            loadGeetestWithRetry().then(function() {
+                if (token !== captchaInitToken) return;
+                window.initGeetest4({
+                    captchaId: KURO_CAPTCHA_ID,
+                    product: "bind",
+                }, function(captcha) {
+                    if (token !== captchaInitToken) return;
+                    captcha.onReady(function() {
+                        geetestReady = true;
+                        showKuroCaptcha = function() { captcha.showBox(); };
+                        showKuroCaptcha();
+                    }).onSuccess(function() {
+                        var result = captcha.getValidate();
+                        if (!result) { showMsg('login-msg', '请完成验证', false); return; }
+                        result.captcha_id = KURO_CAPTCHA_ID;
+
+                        fetch('/api/kuro-send-sms', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                mobile: phone,
+                                geeTestData: JSON.stringify(result)
+                            }),
+                        }).then(function(r) { return r.json(); }).then(function(data) {
+                            showMsg('login-msg', data.msg, data.ok);
+                        }).catch(function(e) {
+                            showMsg('login-msg', '请求失败: ' + e.message, false);
+                        });
+                    }).onError(function() {
+                        showMsg('login-msg', '验证出错，请重试', false);
+                    });
+                });
+            }).catch(function() {
+                showMsg('login-msg', '加载验证组件失败，请检查网络', false);
+            });
+        }
+
+        // ===== 平台切换 =====
+        function onPlatformChange() {
+            var platform = document.getElementById('platform').value;
+            document.getElementById('game').style.display = platform === 'kuro' ? '' : 'none';
+        }
+
+        // ===== 发送验证码 =====
+        function sendCode() {
+            var platform = document.getElementById('platform').value;
+            var phone = document.getElementById('phone').value.trim();
+            if (!phone) { showMsg('login-msg', '请输入手机号', false); return; }
+
+            if (platform === 'kuro') {
+                initKuroCaptcha(phone);
+                return;
+            }
+
+            // 塔吉多：直接发送
+            var btn = document.getElementById('btn-send-code');
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+
+            fetch('/api/send-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({platform: platform, phone: phone}),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('login-msg', data.msg, data.ok);
+            }).catch(function(e) {
+                showMsg('login-msg', '请求失败: ' + e.message, false);
+            }).finally(function() {
+                btn.disabled = false;
+                btn.textContent = '发送验证码';
+            });
+        }
+
+        // ===== 登录 =====
+        function doLogin() {
+            var platform = document.getElementById('platform').value;
+            var phone = document.getElementById('phone').value.trim();
+            var code = document.getElementById('code').value.trim();
+            var game = document.getElementById('game').value;
+
+            if (!phone || !code) { showMsg('login-msg', '请输入手机号和验证码', false); return; }
+
+            var btn = document.getElementById('btn-login');
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+
+            var body = {platform: platform, phone: phone, code: code};
+            if (platform === 'kuro') body.game = game;
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('login-msg', data.msg, data.ok);
+                if (data.ok) {
+                    document.getElementById('phone').value = '';
+                    document.getElementById('code').value = '';
+                    loadAccounts();
+                }
+            }).catch(function(e) {
+                showMsg('login-msg', '请求失败: ' + e.message, false);
+            }).finally(function() {
+                btn.disabled = false;
+                btn.textContent = '登录';
+            });
+        }
+
+        // ===== 账号列表 =====
+        function loadAccounts() {
+            fetch('/api/accounts').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('account-list');
+
+                if (data.length === 0) {
+                    el.innerHTML = '<div class="empty">暂无账号，请先登录</div>';
+                    return;
+                }
+
+                var html = '';
+                data.forEach(function(acc) {
+                    var isKuro = acc.platform === 'kuro';
+                    var platformClass = isKuro ? 'platform-kuro' : 'platform-tajiduo';
+                    var platformLabel = isKuro ? '库洛' : '塔吉多';
+                    var uid = isKuro ? acc.uid : acc.center_uid;
+                    var detail = isKuro ? (acc.game_label + ' | ' + acc.cookie_preview) : ('设备: ' + (acc.dev_code || '-'));
+
+                    html += '<div class="account-item">' +
+                        '<div class="account-info">' +
+                            '<span class="account-platform ' + platformClass + '">' + platformLabel + '</span>' +
+                            '<span class="account-uid">' + escapeHtml(uid) + '</span>' +
+                            '<div class="account-detail">' + escapeHtml(detail) + '</div>' +
+                        '</div>' +
+                        '<button class="btn-danger btn-sm" onclick="deleteAccount(\'' + acc.platform + '\', ' + acc.index + ')">删除</button>' +
+                    '</div>';
+                });
+                el.innerHTML = html;
+            }).catch(function() {
+                document.getElementById('account-list').innerHTML = '<div class="empty">加载失败</div>';
+            });
+        }
+
+        // ===== 删除账号 =====
+        function deleteAccount(platform, index) {
+            if (!confirm('确定删除该账号？')) return;
+            fetch('/api/accounts/' + platform + '/' + index, {method: 'DELETE'}).then(function(r) {
+                return r.json();
+            }).then(function(data) {
+                if (data.ok) { loadAccounts(); }
+                else { alert(data.msg); }
+            }).catch(function(e) {
+                alert('删除失败: ' + e.message);
+            });
+        }
+
+        // ===== 签到状态 =====
+        function refreshStatus() {
+            fetch('/api/status').then(function(r) { return r.json(); }).then(function(data) {
+                var el = document.getElementById('status-list');
+
+                var records = data.records || {};
+                var keys = Object.keys(records);
+
+                if (keys.length === 0) {
+                    el.innerHTML = '<div class="empty">' + data.date + ' 暂无签到记录</div>';
+                    return;
+                }
+
+                var kindLabels = {
+                    'game_sign': '游戏签到',
+                    'bbs_sign': 'BBS签到',
+                    'bbs_detail': '浏览帖子',
+                    'bbs_like': '点赞帖子',
+                    'bbs_share': '分享帖子',
+                    'app_sign': '塔吉多签到',
+                    'task_browse_post_c': '浏览帖子',
+                    'task_like_post_c': '点赞帖子',
+                    'task_share': '分享帖子',
+                };
+
+                var html = '';
+                keys.forEach(function(refId) {
+                    var items = records[refId];
+                    html += '<div class="status-group">';
+                    html += '<div class="status-group-title">' + escapeHtml(refId) + '</div>';
+                    items.forEach(function(item) {
+                        var label = kindLabels[item.kind] || item.kind;
+                        html += '<div class="status-item">' +
+                            '<span class="status-kind">' + escapeHtml(label) + '</span>' +
+                            '<span class="status-icon status-ok">✅</span>' +
+                        '</div>';
+                    });
+                    html += '</div>';
+                });
+                el.innerHTML = html;
+            }).catch(function() {
+                document.getElementById('status-list').innerHTML = '<div class="empty">加载失败</div>';
+            });
+        }
+
+        // ===== 执行签到 =====
+        function doSign() {
+            var btn = document.getElementById('btn-sign');
+            var logEl = document.getElementById('sign-log');
+            btn.disabled = true;
+            btn.textContent = '签到中...';
+            logEl.innerHTML = '';
+            logEl.classList.add('show');
+
+            fetch('/api/sign', {method: 'POST'}).then(function(resp) {
+                var reader = resp.body.getReader();
+                var decoder = new TextDecoder();
+                var buffer = '';
+
+                function read() {
+                    return reader.read().then(function(result) {
+                        if (result.done) return;
+
+                        buffer += decoder.decode(result.value, {stream: true});
+                        var lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (var i = 0; i < lines.length; i++) {
+                            var line = lines[i];
+                            if (line.indexOf('data: ') === 0) {
+                                try {
+                                    var data = JSON.parse(line.slice(6));
+                                    var cls = data.type === 'error' ? 'log-error' :
+                                               data.type === 'skip' ? 'log-skip' :
+                                               data.type === 'progress' ? 'log-progress' :
+                                               data.type === 'done' ? 'log-done' : '';
+                                    logEl.innerHTML += '<div class="' + cls + '">' + escapeHtml(data.msg) + '</div>';
+                                    logEl.scrollTop = logEl.scrollHeight;
+
+                                    if (data.done) { refreshStatus(); }
+                                } catch(e) {}
+                            }
+                        }
+                        return read();
+                    });
+                }
+                return read();
+            }).catch(function(e) {
+                logEl.innerHTML += '<div class="log-error">请求失败: ' + escapeHtml(e.message) + '</div>';
+            }).finally(function() {
+                btn.disabled = false;
+                btn.textContent = '开始签到';
+            });
+        }
+
+        // ===== 定时配置 =====
+        function loadConfig() {
+            fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+                document.getElementById('sched-time').value = data.time || '06:00';
+                updateScheduleStatus(data.enabled, data.time);
+            }).catch(function() {});
+        }
+
+        function updateScheduleStatus(enabled, time) {
+            var statusEl = document.getElementById('schedule-status');
+            var toggleBtn = document.getElementById('btn-toggle-sched');
+            var dot = statusEl.querySelector('.status-dot');
+            var textEl = statusEl.querySelector('.status-text');
+            var detailEl = statusEl.querySelector('.status-detail');
+
+            if (enabled) {
+                dot.className = 'status-dot on';
+                textEl.textContent = '定时签到已启用';
+                detailEl.textContent = '每天 ' + (time || '06:00') + ' 自动执行签到';
+                toggleBtn.textContent = '关闭定时';
+                toggleBtn.className = 'btn-danger';
+            } else {
+                dot.className = 'status-dot off';
+                textEl.textContent = '定时签到未启用';
+                detailEl.textContent = '点击下方按钮开启定时签到';
+                toggleBtn.textContent = '启用定时';
+                toggleBtn.className = 'btn-warning';
+            }
+        }
+
+        function saveConfig() {
+            var time = document.getElementById('sched-time').value;
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({time: time, repeat: false, enabled: true}),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('config-msg', data.msg, data.ok);
+                if (data.ok) { loadConfig(); }
+            }).catch(function(e) {
+                showMsg('config-msg', '保存失败: ' + e.message, false);
+            });
+        }
+
+        function toggleSchedule() {
+            fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+                var newEnabled = !data.enabled;
+                var time = document.getElementById('sched-time').value || data.time;
+
+                return fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({time: time, repeat: false, enabled: newEnabled}),
+                });
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('config-msg', data.msg, data.ok);
+                if (data.ok) { loadConfig(); }
+            }).catch(function(e) {
+                showMsg('config-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        // ===== 推送配置 =====
+        function loadNotify() {
+            fetch('/api/notify').then(function(r) { return r.json(); }).then(function(data) {
+                updateNotifyStatus(data.enabled);
+                // Don't fill in masked values
+                if (data.serverchan.sckey && !data.serverchan.sckey.includes('...')) {
+                    document.getElementById('notify-sckey').value = data.serverchan.sckey;
+                }
+                if (data.telegram.bot_token && !data.telegram.bot_token.includes('...')) {
+                    document.getElementById('notify-tg-token').value = data.telegram.bot_token;
+                }
+                if (data.telegram.chat_id) {
+                    document.getElementById('notify-tg-chat').value = data.telegram.chat_id;
+                }
+            }).catch(function() {});
+        }
+
+        function updateNotifyStatus(enabled) {
+            var statusEl = document.getElementById('notify-status');
+            var toggleBtn = document.getElementById('btn-toggle-notify');
+            var dot = statusEl.querySelector('.status-dot');
+            var textEl = statusEl.querySelector('.status-text');
+
+            if (enabled) {
+                dot.className = 'status-dot on';
+                textEl.textContent = '推送通知已启用';
+                toggleBtn.textContent = '关闭推送';
+                toggleBtn.className = 'btn-danger';
+            } else {
+                dot.className = 'status-dot off';
+                textEl.textContent = '推送通知未启用';
+                toggleBtn.textContent = '启用推送';
+                toggleBtn.className = 'btn-warning';
+            }
+        }
+
+        function saveNotify() {
+            var sckey = document.getElementById('notify-sckey').value.trim();
+            var tgToken = document.getElementById('notify-tg-token').value.trim();
+            var tgChat = document.getElementById('notify-tg-chat').value.trim();
+
+            fetch('/api/notify', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    enabled: true,
+                    sckey: sckey,
+                    bot_token: tgToken,
+                    chat_id: tgChat,
+                }),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('notify-msg', data.msg, data.ok);
+                if (data.ok) { loadNotify(); }
+            }).catch(function(e) {
+                showMsg('notify-msg', '保存失败: ' + e.message, false);
+            });
+        }
+
+        function toggleNotify() {
+            fetch('/api/notify').then(function(r) { return r.json(); }).then(function(data) {
+                var newEnabled = !data.enabled;
+
+                return fetch('/api/notify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: newEnabled}),
+                });
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                showMsg('notify-msg', data.msg, data.ok);
+                if (data.ok) { loadNotify(); }
+            }).catch(function(e) {
+                showMsg('notify-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        function testNotify() {
+            fetch('/api/notify/test', {method: 'POST'}).then(function(r) {
+                return r.json();
+            }).then(function(data) {
+                showMsg('notify-msg', data.msg, data.ok);
+            }).catch(function(e) {
+                showMsg('notify-msg', '测试失败: ' + e.message, false);
+            });
+        }
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', function() {
+            onPlatformChange();
+            loadAccounts();
+            refreshStatus();
+            loadConfig();
+            loadNotify();
+        });
+    </script>
+</body>
+</html>

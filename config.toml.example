@@ -1,0 +1,63 @@
+# 独立签到工具配置文件
+# 复制此文件为 config.toml 并填入你的账号信息
+
+[general]
+concurrency = 3            # 最大并发数
+delay = [1.0, 3.0]         # 账号间随机延迟范围 (秒)
+log_level = "INFO"         # 日志级别: DEBUG, INFO, WARNING, ERROR
+db_path = "sign.db"        # SQLite 数据库路径
+
+# ===========================================
+# 库洛账号 (鸣潮/战双)
+# 获取方式: sign-tool login kuro --phone <手机号> --code <验证码>
+# ===========================================
+# [[kuro.accounts]]
+# cookie = ""              # 登录后自动获取
+# uid = ""                 # 游戏角色ID (登录后自动获取)
+# game = "waves"           # waves=鸣潮, pgr=战双
+# did = ""                 # 设备ID (留空自动生成)
+
+# ===========================================
+# 塔吉多账号 (异环/幻塔)
+# 获取方式: sign-tool login tajiduo --phone <手机号> --code <验证码>
+# ===========================================
+# [[tajiduo.accounts]]
+# refresh_token = ""       # 登录后自动获取
+# center_uid = ""          # 塔吉多中心UID (登录后自动获取)
+# dev_code = ""            # 设备ID (留空自动生成)
+
+# ===========================================
+# 库洛 BBS 社区任务配置
+# ===========================================
+[kuro.bbs]
+enabled = ["sign", "detail", "like", "share"]  # 可选任务: sign, detail, like, share
+
+# ===========================================
+# 塔吉多社区任务配置
+# ===========================================
+[tajiduo.tasks]
+enabled = ["browse_post_c", "like_post_c", "share"]  # 可选任务
+action_delay = [0.5, 1.5]  # 任务操作间随机延迟 (秒)
+max_failures = 3            # 连续失败次数熔断
+
+# ===========================================
+# 定时签到配置
+# ===========================================
+[schedule]
+enabled = false            # 是否启用定时签到
+time = "06:00"             # 签到时间 (HH:MM)
+repeat = false             # 是否重复签到 (每天5次, 间隔9-14小时)
+
+# ===========================================
+# 推送通知配置
+# 签到完成后推送结果到手机
+# ===========================================
+[notify]
+enabled = false            # 是否启用推送
+
+[notify.serverchan]
+sckey = ""                 # Server酱 SCKEY (从 https://sct.ftqq.com/ 获取)
+
+[notify.telegram]
+bot_token = ""             # Telegram Bot Token (从 @BotFather 获取)
+chat_id = ""               # Telegram Chat ID (从 @userinfobot 获取)

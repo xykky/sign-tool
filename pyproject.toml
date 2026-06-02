@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sign-tool"
+version = "0.1.0"
+description = "独立签到工具 - 库洛(鸣潮/战双) + 塔吉多(异环/幻塔)"
+requires-python = ">=3.8"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "aiosqlite>=0.20",
+    "pycryptodome>=3.20",
+    "tomli>=2.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.scripts]
+sign-tool = "sign_tool.cli:main"
