@@ -66,6 +66,7 @@ class KuroClient:
         self.game_id = game_id
         self.did = did or f"CLI-{random.randint(100000, 999999)}"
         self.bat = ""
+        self.server_id = ""  # Will be set from role list if available
 
     async def _request(
         self,
@@ -118,6 +119,8 @@ class KuroClient:
             return False
 
     def _get_server_id(self) -> str:
+        if self.server_id:
+            return self.server_id
         if self._is_net():
             return SERVER_ID_NET
         return SERVER_ID

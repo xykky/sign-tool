@@ -149,6 +149,16 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
         results.append(f"验证登录失败: {e.message}")
         return results
 
+    # Get role list to find the correct serverId
+    try:
+        roles = await client.find_role_list()
+        for role in roles:
+            if str(role.get("roleId", "")) == uid:
+                client.server_id = str(role.get("serverId", ""))
+                break
+    except KuroError:
+        pass  # Continue with default server ID
+
     # Refresh data (and bat token if needed)
     try:
         await client.refresh_data()

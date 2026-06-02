@@ -21,18 +21,30 @@ async def login_kuro(mobile: str, code: str, game: str, config: Config) -> KuroA
     if not token:
         raise KuroError("登录成功但未返回 token")
 
-    # Now get the role list to find uid
     client.cookie = token
     roles = await client.find_role_list()
 
+    if not roles:
+        raise KuroError(f"获取角色列表为空，请先在游戏中创建角色 (game={game}, gameId={game_id})")
+
+    # Find the best matching role
+    # Prefer a role with a non-empty roleId
     uid = ""
-    if roles:
-        # Use the first role
-        uid = str(roles[0].get("roleId", ""))
-        if not uid:
-            raise KuroError("获取角色列表成功但未找到 roleId")
+    selected_role = None
+    for role in roles:
+        rid = str(role.get("roleId", ""))
+        if rid:
+            uid = rid
+            selected_role = role
+            break
+
+    if not uid:
+        raise KuroError(f"角色列表中未找到 roleId，返回数据: {roles}")
+
+    server_id = str(selected_role.get("serverId", "")) if selected_role else ""
+    role_name = str(selected_role.get("roleName", "")) if selected_role else ""
 
     account = KuroAccount(cookie=token, uid=uid, game=game, did=did)
     save_kuro_account(config.config_path, account)
-    logger.info(f"库洛登录成功: uid={uid} game={game}")
+    logger.info(f"库洛登录成功: uid={uid} game={game} server={server_id} role={role_name} (共{len(roles)}个角色)")
     return account

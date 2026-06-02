@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from copy import deepcopy
 
 try:
     import tomllib
 except ModuleNotFoundError:
     import tomli as tomllib
+
+import tomli_w
+
 from dataclasses import field, dataclass
 
 
@@ -77,6 +81,305 @@ class Config:
     notify: NotifyConfig = field(default_factory=NotifyConfig)
 
 
+# ===== TOML I/O helpers =====
+
+def _read_toml(path: str) -> dict:
+    """Read a TOML file and return as dict. Returns empty dict if not found."""
+    p = Path(path)
+    if not p.exists():
+        return {}
+    with open(p, "rb") as f:
+        return tomllib.load(f)
+
+
+def _write_toml(path: str, data: dict) -> None:
+    """Write a dict to a TOML file."""
+    p = Path(path)
+    p.write_text(tomli_w.dumps(data), "utf-8")
+
+
+# ===== Config loading =====
+
+def _try_fix_corrupted_config(path: str) -> bool:
+    """Try to fix a corrupted config.toml caused by old line-manipulation code.
+
+    Known corruption: [[tajiduo.accounts]] inserted inside [tajiduo.tasks],
+    with task keys appearing as account keys and account credentials appended
+    at file end outside any section.
+
+    Returns True if the file was fixed (needs re-parse), False if unfixable.
+    """
+    p = Path(path)
+    text = p.read_text("utf-8")
+
+    # Quick check: if TOML parses fine, nothing to fix
+    try:
+        tomllib.loads(text)
+        return False
+    except tomllib.TOMLDecodeError:
+        pass
+
+    lines = text.splitlines()
+
+    # Strategy: extract all sections and key-value pairs, rebuild valid TOML
+    # Parse sections and their content manually
+    sections: dict[str, list[tuple[str, str]]] = {}
+    current_section = "__top__"
+    sections[current_section] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        # Detect section headers
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if stripped.startswith("[[") and stripped.endswith("]]"):
+                # Array of tables
+                current_section = stripped
+            else:
+                current_section = stripped
+            if current_section not in sections:
+                sections[current_section] = []
+            continue
+
+        # Key-value pair
+        if "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            value_part = stripped.split("=", 1)[1].strip()
+            sections[current_section].append((key, value_part))
+
+    # Now rebuild: find all tajiduo accounts entries
+    tajiduo_accounts = []
+    tajiduo_tasks_keys = []
+    stray_keys = []  # keys that appeared outside any section
+
+    for section, kvs in sections.items():
+        if section == "[[tajiduo.accounts]]":
+            tajiduo_accounts.append(kvs)
+        elif section == "[tajiduo.tasks]":
+            tajiduo_tasks_keys = kvs
+        elif section == "__top__":
+            stray_keys = kvs
+
+    # If stray keys look like account fields, add them as an account
+    stray_account = {}
+    for key, val in stray_keys:
+        if key in ("refresh_token", "center_uid", "dev_code"):
+            stray_account[key] = val
+    if stray_account:
+        tajiduo_accounts.append(list(stray_account.items()))
+
+    # Rebuild the config using _read_toml / _write_toml approach
+    # First, parse what we can from the original file
+    data = {}
+
+    # Parse general, kuro, schedule, notify from sections
+    for section, kvs in sections.items():
+        if section in ("__top__", "[[tajiduo.accounts]]", "[tajiduo.tasks]"):
+            continue
+        # Simplified: just collect key-value pairs
+        # We'll use a different approach: parse the original file excluding corrupted parts
+
+    # Better approach: build clean dict and write it
+    # Read what we can from the non-corrupted parts
+    try:
+        # Try parsing individual sections by building a clean TOML string
+        clean_parts = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                clean_parts.append(line)
+                continue
+            # Skip the misplaced [[tajiduo.accounts]] and its content
+            # Skip stray key-value pairs at top level that belong to accounts
+            clean_parts.append(line)
+
+        # Actually, let's just build a clean config from what we can extract
+        # Parse the original file line by line, skip corrupted parts
+        pass
+    except Exception:
+        pass
+
+    # Simplest robust approach: extract values and write clean TOML
+    import re
+
+    def extract_value(lines_list: list[str], key: str) -> str:
+        for ln in lines_list:
+            s = ln.strip()
+            if s.startswith(key + "="):
+                return s.split("=", 1)[1].strip()
+        return ""
+
+    # Extract kuro account info
+    kuro_accounts = []
+    in_kuro_account = False
+    current_kuro = {}
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "[[kuro.accounts]]":
+            if current_kuro:
+                kuro_accounts.append(current_kuro)
+            current_kuro = {}
+            in_kuro_account = True
+            continue
+        if stripped.startswith("[") and in_kuro_account:
+            if current_kuro:
+                kuro_accounts.append(current_kuro)
+            current_kuro = {}
+            in_kuro_account = False
+            continue
+        if in_kuro_account and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            val = stripped.split("=", 1)[1].strip().strip('"')
+            current_kuro[key] = val
+    if current_kuro:
+        kuro_accounts.append(current_kuro)
+
+    # Extract tajiduo account info (from the corrupted structure)
+    tajiduo_acc_list = []
+    in_tajiduo_account = False
+    current_td = {}
+    # Also collect from stray end-of-file keys
+    stray_td = {}
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped == "[[tajiduo.accounts]]":
+            if current_td:
+                tajiduo_acc_list.append(current_td)
+            current_td = {}
+            in_tajiduo_account = True
+            continue
+        if stripped.startswith("[") and in_tajiduo_account and stripped != "[[tajiduo.accounts]]":
+            if current_td:
+                tajiduo_acc_list.append(current_td)
+            current_td = {}
+            in_tajiduo_account = False
+            continue
+        if in_tajiduo_account and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            val = stripped.split("=", 1)[1].strip().strip('"')
+            if key in ("refresh_token", "center_uid", "dev_code"):
+                current_td[key] = val
+    if current_td:
+        tajiduo_acc_list.append(current_td)
+
+    # Collect stray account fields at end of file
+    for line in lines[-10:]:
+        stripped = line.strip()
+        if "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            val = stripped.split("=", 1)[1].strip().strip('"')
+            if key in ("refresh_token", "center_uid", "dev_code"):
+                stray_td[key] = val
+    if stray_td and not any(td.get("refresh_token") for td in tajiduo_acc_list):
+        tajiduo_acc_list.append(stray_td)
+
+    # Extract other sections
+    def get_section_values(section_name: str) -> dict:
+        result = {}
+        in_section = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped == section_name:
+                in_section = True
+                continue
+            if stripped.startswith("[") and in_section:
+                in_section = False
+                continue
+            if in_section and "=" in stripped:
+                key = stripped.split("=", 1)[0].strip()
+                val = stripped.split("=", 1)[1].strip()
+                result[key] = val
+        return result
+
+    general = get_section_values("[general]")
+    kuro_bbs = get_section_values("[kuro.bbs]")
+    tajiduo_tasks = get_section_values("[tajiduo.tasks]")
+    schedule = get_section_values("[schedule]")
+    notify = get_section_values("[notify]")
+    serverchan = get_section_values("[notify.serverchan]")
+    telegram = get_section_values("[notify.telegram]")
+
+    # Build clean TOML data
+    clean = {}
+
+    if general:
+        gen = {}
+        for k, v in general.items():
+            if k == "concurrency":
+                gen[k] = int(v)
+            elif k == "delay":
+                gen[k] = [float(x) for x in v.strip("[]").split(",")]
+            elif k == "db_path":
+                gen[k] = v.strip('"')
+            elif k == "log_level":
+                gen[k] = v.strip('"')
+        clean["general"] = gen
+
+    if kuro_bbs:
+        bbs = {}
+        for k, v in kuro_bbs.items():
+            if k == "enabled":
+                import ast
+                try:
+                    bbs[k] = ast.literal_eval(v)
+                except Exception:
+                    bbs[k] = ["sign", "detail", "like", "share"]
+        clean.setdefault("kuro", {})["bbs"] = bbs
+
+    if kuro_accounts:
+        clean.setdefault("kuro", {})["accounts"] = kuro_accounts
+
+    if tajiduo_tasks:
+        tasks = {}
+        for k, v in tajiduo_tasks.items():
+            if k == "enabled":
+                import ast
+                try:
+                    tasks[k] = ast.literal_eval(v)
+                except Exception:
+                    tasks[k] = ["browse_post_c", "like_post_c", "share"]
+            elif k == "action_delay":
+                tasks[k] = [float(x) for x in v.strip("[]").split(",")]
+            elif k == "max_failures":
+                tasks[k] = int(v)
+        clean.setdefault("tajiduo", {})["tasks"] = tasks
+
+    if tajiduo_acc_list:
+        clean.setdefault("tajiduo", {})["accounts"] = tajiduo_acc_list
+
+    if schedule:
+        sched = {}
+        for k, v in schedule.items():
+            if k == "enabled":
+                sched[k] = v.lower() == "true"
+            elif k == "repeat":
+                sched[k] = v.lower() == "true"
+            elif k == "time":
+                sched[k] = v.strip('"')
+        clean["schedule"] = sched
+
+    if notify:
+        n = {}
+        n["enabled"] = notify.get("enabled", "false").lower() == "true"
+        if serverchan:
+            n["serverchan"] = {k: v.strip('"') for k, v in serverchan.items()}
+        if telegram:
+            n["telegram"] = {k: v.strip('"') for k, v in telegram.items()}
+        clean["notify"] = n
+
+    # Write clean config
+    _write_toml(path, clean)
+
+    # Verify it parses
+    try:
+        _read_toml(path)
+        return True
+    except Exception:
+        return False
+
+
 def load_config(path: str = "config.toml") -> Config:
     p = Path(path)
     if not p.exists():
@@ -84,8 +387,19 @@ def load_config(path: str = "config.toml") -> Config:
         print(f"请先创建配置文件，参考 config.toml.example")
         sys.exit(1)
 
-    with open(p, "rb") as f:
-        raw = tomllib.load(f)
+    try:
+        with open(p, "rb") as f:
+            raw = tomllib.load(f)
+    except tomllib.TOMLDecodeError:
+        print(f"配置文件格式错误，尝试自动修复...")
+        if _try_fix_corrupted_config(path):
+            print(f"配置文件已自动修复")
+            with open(p, "rb") as f:
+                raw = tomllib.load(f)
+        else:
+            print(f"自动修复失败，请手动检查配置文件: {path}")
+            print(f"或删除后重新创建: cp config.toml.example config.toml")
+            sys.exit(1)
 
     cfg = Config(config_path=path)
 
@@ -151,249 +465,93 @@ def load_config(path: str = "config.toml") -> Config:
     return cfg
 
 
+# ===== Account CRUD =====
+
 def save_kuro_account(path: str, account: KuroAccount) -> None:
     """Append a kuro account to config.toml."""
-    p = Path(path)
-    lines = p.read_text("utf-8").splitlines() if p.exists() else []
+    data = _read_toml(path)
 
-    # Find or create [kuro] section
-    kuro_section_idx = None
-    for i, line in enumerate(lines):
-        if line.strip() == "[kuro]" or line.strip().startswith("[kuro."):
-            kuro_section_idx = i
-            break
+    kuro = data.setdefault("kuro", {})
+    accounts = kuro.setdefault("accounts", [])
 
-    if kuro_section_idx is None:
-        lines.append("")
-        lines.append("[[kuro.accounts]]")
-    else:
-        # Find last [[kuro.accounts]] or insert after [kuro]
-        last_account_idx = kuro_section_idx
-        for i in range(kuro_section_idx, len(lines)):
-            if lines[i].strip() == "[[kuro.accounts]]":
-                last_account_idx = i
-        # Find end of last account block
-        insert_idx = last_account_idx + 1
-        while insert_idx < len(lines) and lines[insert_idx].strip() and not lines[insert_idx].strip().startswith("["):
-            insert_idx += 1
-        lines.insert(insert_idx, "")
-        lines.insert(insert_idx + 1, "[[kuro.accounts]]")
-        insert_idx += 2
-
-        lines.insert(insert_idx, f'cookie = "{account.cookie}"')
-        lines.insert(insert_idx + 1, f'uid = "{account.uid}"')
-        lines.insert(insert_idx + 2, f'game = "{account.game}"')
-        if account.did:
-            lines.insert(insert_idx + 3, f'did = "{account.did}"')
-        p.write_text("\n".join(lines), "utf-8")
-        return
-
-    lines.append(f'cookie = "{account.cookie}"')
-    lines.append(f'uid = "{account.uid}"')
-    lines.append(f'game = "{account.game}"')
+    entry = {
+        "cookie": account.cookie,
+        "uid": account.uid,
+        "game": account.game,
+    }
     if account.did:
-        lines.append(f'did = "{account.did}"')
-    p.write_text("\n".join(lines), "utf-8")
+        entry["did"] = account.did
+
+    accounts.append(entry)
+    _write_toml(path, data)
 
 
 def save_tajiduo_account(path: str, account: TajiduoAccount) -> None:
     """Append a tajiduo account to config.toml."""
-    p = Path(path)
-    lines = p.read_text("utf-8").splitlines() if p.exists() else []
+    data = _read_toml(path)
 
-    # Find [[tajiduo.accounts]] sections
-    last_account_idx = None
-    for i, line in enumerate(lines):
-        if line.strip() == "[[tajiduo.accounts]]":
-            last_account_idx = i
+    tajiduo = data.setdefault("tajiduo", {})
+    accounts = tajiduo.setdefault("accounts", [])
 
-    if last_account_idx is None:
-        # Find [tajiduo] section or append
-        tajiduo_section_idx = None
-        for i, line in enumerate(lines):
-            if line.strip() == "[tajiduo]" or line.strip().startswith("[tajiduo."):
-                tajiduo_section_idx = i
-                break
-        if tajiduo_section_idx is None:
-            lines.append("")
-            lines.append("[[tajiduo.accounts]]")
-        else:
-            insert_idx = tajiduo_section_idx + 1
-            lines.insert(insert_idx, "")
-            lines.insert(insert_idx + 1, "[[tajiduo.accounts]]")
-    else:
-        # Find end of last account block
-        insert_idx = last_account_idx + 1
-        while insert_idx < len(lines) and lines[insert_idx].strip() and not lines[insert_idx].strip().startswith("["):
-            insert_idx += 1
-        lines.insert(insert_idx, "")
-        lines.insert(insert_idx + 1, "[[tajiduo.accounts]]")
-        insert_idx += 2
-
-        lines.insert(insert_idx, f'refresh_token = "{account.refresh_token}"')
-        lines.insert(insert_idx + 1, f'center_uid = "{account.center_uid}"')
-        if account.dev_code:
-            lines.insert(insert_idx + 2, f'dev_code = "{account.dev_code}"')
-        p.write_text("\n".join(lines), "utf-8")
-        return
-
-    lines.append(f'refresh_token = "{account.refresh_token}"')
-    lines.append(f'center_uid = "{account.center_uid}"')
+    entry = {
+        "refresh_token": account.refresh_token,
+        "center_uid": account.center_uid,
+    }
     if account.dev_code:
-        lines.append(f'dev_code = "{account.dev_code}"')
-    p.write_text("\n".join(lines), "utf-8")
+        entry["dev_code"] = account.dev_code
+
+    accounts.append(entry)
+    _write_toml(path, data)
 
 
 def delete_account(path: str, platform: str, index: int) -> bool:
     """Delete an account from config.toml by platform and index. Returns True if deleted."""
-    p = Path(path)
-    if not p.exists():
-        return False
-    lines = p.read_text("utf-8").splitlines()
-
-    # Find all account blocks for the platform
-    marker = f"[[{platform}.accounts]]"
-    block_starts = []
-    for i, line in enumerate(lines):
-        if line.strip() == marker:
-            block_starts.append(i)
-
-    if index < 0 or index >= len(block_starts):
+    data = _read_toml(path)
+    if not data:
         return False
 
-    start = block_starts[index]
-    # Find end of block
-    end = start + 1
-    while end < len(lines):
-        stripped = lines[end].strip()
-        if stripped == "" or stripped.startswith("["):
-            break
-        end += 1
+    accounts = data.get(platform, {}).get("accounts", [])
+    if index < 0 or index >= len(accounts):
+        return False
 
-    # Also remove the marker line and any blank line before it
-    del lines[start:end]
+    accounts.pop(index)
 
-    # Remove trailing blank line before the block if exists
-    if start > 0 and lines[start - 1].strip() == "":
-        del lines[start - 1]
+    if not accounts:
+        data.get(platform, {}).pop("accounts", None)
 
-    p.write_text("\n".join(lines), "utf-8")
+    _write_toml(path, data)
     return True
 
 
+# ===== Config updates =====
+
 def update_schedule_config(path: str, time: str, repeat: bool, enabled: bool) -> None:
     """Update [schedule] section in config.toml."""
-    p = Path(path)
-    if not p.exists():
-        return
-    lines = p.read_text("utf-8").splitlines()
-
-    # Find [schedule] section
-    sched_idx = None
-    for i, line in enumerate(lines):
-        if line.strip() == "[schedule]":
-            sched_idx = i
-            break
-
-    if sched_idx is None:
-        # Append new section
-        lines.append("")
-        lines.append("[schedule]")
-        lines.append(f'enabled = {str(enabled).lower()}')
-        lines.append(f'time = "{time}"')
-        lines.append(f'repeat = {str(repeat).lower()}')
-    else:
-        # Replace existing section content
-        end = sched_idx + 1
-        while end < len(lines):
-            stripped = lines[end].strip()
-            if stripped == "" or stripped.startswith("["):
-                break
-            end += 1
-        new_lines = [
-            f'enabled = {str(enabled).lower()}',
-            f'time = "{time}"',
-            f'repeat = {str(repeat).lower()}',
-        ]
-        lines[sched_idx + 1:end] = new_lines
-
-    p.write_text("\n".join(lines), "utf-8")
+    data = _read_toml(path)
+    data["schedule"] = {
+        "enabled": enabled,
+        "time": time,
+        "repeat": repeat,
+    }
+    _write_toml(path, data)
 
 
 def update_notify_config(path: str, enabled: bool, sckey: str = "", bot_token: str = "", chat_id: str = "") -> None:
     """Update [notify] section in config.toml."""
-    p = Path(path)
-    if not p.exists():
-        return
-    lines = p.read_text("utf-8").splitlines()
-
-    # Find [notify] section
-    notify_idx = None
-    for i, line in enumerate(lines):
-        if line.strip() == "[notify]":
-            notify_idx = i
-            break
-
-    # Build new section content
-    new_section = [
-        "[notify]",
-        f'enabled = {str(enabled).lower()}',
-        "",
-        "[notify.serverchan]",
-        f'sckey = "{sckey}"',
-        "",
-        "[notify.telegram]",
-        f'bot_token = "{bot_token}"',
-        f'chat_id = "{chat_id}"',
-    ]
-
-    if notify_idx is None:
-        # Append new section
-        lines.append("")
-        lines.extend(new_section)
-    else:
-        # Find end of notify section (including subsections)
-        end = notify_idx + 1
-        while end < len(lines):
-            stripped = lines[end].strip()
-            # Skip subsections too
-            if stripped.startswith("[") and stripped != "[notify.serverchan]" and stripped != "[notify.telegram]":
-                break
-            if stripped == "" and end + 1 < len(lines) and lines[end + 1].strip().startswith("["):
-                break
-            end += 1
-        lines[notify_idx:end] = new_section
-
-    p.write_text("\n".join(lines), "utf-8")
+    data = _read_toml(path)
+    data["notify"] = {
+        "enabled": enabled,
+        "serverchan": {"sckey": sckey},
+        "telegram": {"bot_token": bot_token, "chat_id": chat_id},
+    }
+    _write_toml(path, data)
 
 
 def update_tajiduo_refresh_token(path: str, center_uid: str, new_token: str) -> None:
     """Update the refresh_token for a tajiduo account in config.toml."""
-    p = Path(path)
-    if not p.exists():
-        return
-    content = p.read_text("utf-8")
-    lines = content.splitlines()
-
-    # Find the account block matching center_uid
-    in_block = False
-    block_start = -1
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped == "[[tajiduo.accounts]]":
-            if in_block and block_start >= 0:
-                # Previous block ended, check if it had our center_uid
-                pass
-            in_block = True
-            block_start = i
-        elif stripped.startswith("[") and in_block:
-            # End of block without finding center_uid
-            in_block = False
-        elif in_block and stripped.startswith("center_uid") and center_uid in stripped:
-            # Found the right block, now find refresh_token line
-            for j in range(block_start, min(i + 10, len(lines))):
-                if lines[j].strip().startswith("refresh_token"):
-                    lines[j] = f'refresh_token = "{new_token}"'
-                    p.write_text("\n".join(lines), "utf-8")
-                    return
+    data = _read_toml(path)
+    for acc in data.get("tajiduo", {}).get("accounts", []):
+        if str(acc.get("center_uid", "")) == str(center_uid):
+            acc["refresh_token"] = new_token
+            _write_toml(path, data)
             return
