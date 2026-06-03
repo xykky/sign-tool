@@ -163,6 +163,24 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
         results.append(f"验证登录失败: {e.message}")
         return results
 
+    # Get role list to find the correct serverId
+    try:
+        roles = await client.find_role_list()
+        logger.info(f"[sign] find_role_list returned {len(roles)} roles")
+        for role in roles:
+            rid = str(role.get("roleId", ""))
+            sid = str(role.get("serverId", ""))
+            rname = str(role.get("roleName", ""))
+            logger.info(f"[sign]   role: roleId={rid}, serverId={sid}, roleName={rname}")
+            if rid == uid:
+                client.server_id = sid
+                logger.info(f"[sign] matched role! server_id set to: {sid}")
+                break
+        if not client.server_id:
+            logger.warning(f"[sign] no matching role found for uid={uid}, using default serverId")
+    except KuroError as e:
+        logger.error(f"[sign] find_role_list failed: {e.message}")
+
     # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
     if game_id != PGR_GAME_ID:
         try:
