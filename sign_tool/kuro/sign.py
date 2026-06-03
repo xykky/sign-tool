@@ -142,9 +142,11 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     results = [f"[库洛 {uid} ({game})]"]
 
     # Validate login (matching RoverSign: handle BAT token invalid)
+    print(f"[DEBUG][sign] uid={uid} game={game} did={did}", flush=True)
     logger.info(f"[sign] uid={uid} game={game} did={did}")
     try:
         login_ok = await client.validate_login()
+        print(f"[DEBUG][sign] validate_login result: {login_ok}", flush=True)
         logger.info(f"[sign] validate_login result: {login_ok}")
         if not login_ok:
             # Could be token expired or BAT invalid — try BAT refresh first
@@ -166,19 +168,24 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     # Get role list to find the correct serverId
     try:
         roles = await client.find_role_list()
+        print(f"[DEBUG][sign] find_role_list returned {len(roles)} roles", flush=True)
         logger.info(f"[sign] find_role_list returned {len(roles)} roles")
         for role in roles:
             rid = str(role.get("roleId", ""))
             sid = str(role.get("serverId", ""))
             rname = str(role.get("roleName", ""))
+            print(f"[DEBUG][sign]   role: roleId={rid}, serverId={sid}, roleName={rname}", flush=True)
             logger.info(f"[sign]   role: roleId={rid}, serverId={sid}, roleName={rname}")
             if rid == uid:
                 client.server_id = sid
+                print(f"[DEBUG][sign] matched role! server_id set to: {sid}", flush=True)
                 logger.info(f"[sign] matched role! server_id set to: {sid}")
                 break
         if not client.server_id:
+            print(f"[DEBUG][sign] no matching role found for uid={uid}, using default serverId", flush=True)
             logger.warning(f"[sign] no matching role found for uid={uid}, using default serverId")
     except KuroError as e:
+        print(f"[DEBUG][sign] find_role_list failed: {e.message}", flush=True)
         logger.error(f"[sign] find_role_list failed: {e.message}")
 
     # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
