@@ -378,6 +378,8 @@ async def update_project():
     """Pull latest code from git and restart service."""
     import subprocess
     import sys
+    import threading
+    import time
 
     project_dir = str(Path(__file__).parent.parent.parent)
 
@@ -392,7 +394,6 @@ async def update_project():
         )
         git_output = result.stdout.strip()
         if result.returncode != 0:
-            # try git fetch + reset
             subprocess.run(["git", "fetch", "origin"], cwd=project_dir, timeout=30)
             result = subprocess.run(
                 ["git", "reset", "--hard", "origin/master"],
@@ -407,7 +408,7 @@ async def update_project():
             return {"ok": True, "msg": f"已是最新版本\n{git_output}"}
 
         # pip install
-        pip_result = subprocess.run(
+        subprocess.run(
             [sys.executable, "-m", "pip", "install", "-e", ".", "-q"],
             cwd=project_dir,
             capture_output=True,
@@ -415,7 +416,14 @@ async def update_project():
             timeout=120,
         )
 
-        return {"ok": True, "msg": f"更新成功！重启中...\n{git_output}"}
+        # delayed restart: give client time to receive response
+        def _restart():
+            time.sleep(2)
+            subprocess.run(["systemctl", "restart", "sign-tool"])
+
+        threading.Thread(target=_restart, daemon=True).start()
+
+        return {"ok": True, "msg": f"更新成功！2秒后自动重启...\n{git_output}"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "msg": "更新超时，请手动执行 update.sh"}
     except Exception as e:

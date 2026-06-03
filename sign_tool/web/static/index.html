@@ -808,7 +808,7 @@
                     textEl.textContent = '更新完成';
                     detailEl.textContent = data.msg.split('\n')[0];
                     // 等待服务重启后刷新页面
-                    setTimeout(function() { location.reload(); }, 3000);
+                    setTimeout(function() { location.reload(); }, 4000);
                 } else {
                     dot.className = 'status-dot off';
                     textEl.textContent = '更新失败';
