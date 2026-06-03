@@ -5,7 +5,7 @@ import asyncio
 
 from ..log import get_logger
 from .. import db
-from .api import KuroClient, KuroError, CODE_TOKEN_INVALID
+from .api import KuroClient, KuroError, CODE_TOKEN_INVALID, CODE_BAT_TOKEN_INVALID
 from .constants import PGR_GAME_ID
 
 logger = get_logger()
@@ -141,31 +141,28 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
 
     results = [f"[库洛 {uid} ({game})]"]
 
-    # Validate login
+    # Validate login (matching RoverSign: handle BAT token invalid)
     try:
         if not await client.validate_login():
-            results.append("登录已过期，请重新登录")
-            return results
+            # Could be token expired or BAT invalid — try BAT refresh first
+            try:
+                await client.refresh_bat_token()
+                if not await client.validate_login():
+                    results.append("登录已过期，请重新登录")
+                    return results
+            except KuroError:
+                results.append("登录已过期，请重新登录")
+                return results
     except KuroError as e:
         results.append(f"验证登录失败: {e.message}")
         return results
-
-    # Get role list to find the correct serverId
-    try:
-        roles = await client.find_role_list()
-        for role in roles:
-            if str(role.get("roleId", "")) == uid:
-                client.server_id = str(role.get("serverId", ""))
-                break
-    except KuroError:
-        pass  # Continue with default server ID
 
     # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
     if game_id != PGR_GAME_ID:
         try:
             await client.refresh_data()
         except KuroError as e:
-            if "BAT" in e.message or e.code == 10903:
+            if "BAT" in e.message or e.code == CODE_BAT_TOKEN_INVALID:
                 try:
                     await client.refresh_bat_token()
                     await client.refresh_data()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import random
 import asyncio
+import socket
 from typing import Any
 
 import httpx
@@ -50,13 +51,20 @@ class KuroError(Exception):
         self.raw = raw
 
 
+def _get_local_ip() -> str:
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except Exception:
+        return "127.0.0.1"
+
+
 def _base_headers(dev_code: str = "") -> dict[str, str]:
     return {
         "source": PLATFORM_SOURCE,
         "Content-Type": CONTENT_TYPE,
         "User-Agent": IOS_USER_AGENT,
         "version": KURO_VERSION,
-        "devCode": dev_code or f"CLI-{random.randint(100000, 999999)}",
+        "devCode": dev_code or f"{_get_local_ip()}, {IOS_USER_AGENT}",
     }
 
 
@@ -75,8 +83,9 @@ class KuroClient:
         data: dict[str, Any],
         headers: dict[str, str] | None = None,
         max_retries: int = 3,
+        use_did_as_devcode: bool = True,
     ) -> dict[str, Any]:
-        h = _base_headers(self.did)
+        h = _base_headers(self.did if use_did_as_devcode else "")
         if headers:
             h.update(headers)
 
@@ -177,7 +186,7 @@ class KuroClient:
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
-        result = await self._request(REFRESH_URL, data, headers)
+        result = await self._request(REFRESH_URL, data, headers, use_did_as_devcode=False)
         code = result.get("code", -1)
         if code == CODE_BAT_TOKEN_INVALID:
             raise KuroError("BAT token 已失效", code=code)
