@@ -9,7 +9,6 @@ description = "独立签到工具 - 库洛(鸣潮/战双) + 塔吉多(异环/幻
 requires-python = ">=3.8"
 dependencies = [
     "httpx>=0.27",
-    "aiohttp>=3.9",
     "pydantic>=2.0",
     "aiosqlite>=0.20",
     "pycryptodome>=3.20",

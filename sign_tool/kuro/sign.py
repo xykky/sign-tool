@@ -26,7 +26,7 @@ async def sign_game(client: KuroClient) -> str:
         return "游戏签到: 成功"
     except KuroError as e:
         if e.code == CODE_TOKEN_INVALID:
-            return f"游戏签到: 失败 (登录已过期)"
+            return "游戏签到: 失败 (登录已过期)"
         logger.warning(f"游戏签到失败 uid={client.uid}: {e.message}")
         return f"游戏签到: 失败 ({e.message})"
 
@@ -135,82 +135,17 @@ async def sign_bbs(client: KuroClient, enabled_tasks: list[str]) -> list[str]:
 
 
 async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled: list[str]) -> list[str]:
-    """Sign one Kuro account. Returns list of status messages."""
+    """Sign one Kuro account. Returns list of status messages.
+
+    Matches RoverSign's on-demand flow: go directly to sign_in without
+    calling login_log or refresh_data (they are not required for signing).
+    """
     game_id = 3 if game == "waves" else 2
     client = KuroClient(cookie=cookie, uid=uid, game_id=game_id, did=did)
 
     results = [f"[库洛 {uid} ({game})]"]
 
-    # Validate login (matching RoverSign: handle BAT token invalid)
-    print(f"[DEBUG][sign] uid={uid} game={game} did={did}", flush=True)
-    logger.info(f"[sign] uid={uid} game={game} did={did}")
-    try:
-        login_ok = await client.validate_login()
-        print(f"[DEBUG][sign] validate_login result: {login_ok}", flush=True)
-        logger.info(f"[sign] validate_login result: {login_ok}")
-        if not login_ok:
-            # Could be token expired or BAT invalid — try BAT refresh first
-            try:
-                logger.info(f"[sign] validate_login failed, trying BAT refresh...")
-                await client.refresh_bat_token()
-                logger.info(f"[sign] BAT refresh done, retrying validate_login...")
-                if not await client.validate_login():
-                    results.append("登录已过期，请重新登录")
-                    return results
-            except KuroError as bat_e:
-                logger.error(f"[sign] BAT refresh failed: {bat_e.message}")
-                results.append("登录已过期，请重新登录")
-                return results
-    except KuroError as e:
-        results.append(f"验证登录失败: {e.message}")
-        return results
-
-    # Get role list to find the correct serverId
-    try:
-        roles = await client.find_role_list()
-        print(f"[DEBUG][sign] find_role_list returned {len(roles)} roles", flush=True)
-        logger.info(f"[sign] find_role_list returned {len(roles)} roles")
-        for role in roles:
-            rid = str(role.get("roleId", ""))
-            sid = str(role.get("serverId", ""))
-            rname = str(role.get("roleName", ""))
-            print(f"[DEBUG][sign]   role: roleId={rid}, serverId={sid}, roleName={rname}", flush=True)
-            logger.info(f"[sign]   role: roleId={rid}, serverId={sid}, roleName={rname}")
-            if rid == uid:
-                client.server_id = sid
-                print(f"[DEBUG][sign] matched role! server_id set to: {sid}", flush=True)
-                logger.info(f"[sign] matched role! server_id set to: {sid}")
-                break
-        if not client.server_id:
-            print(f"[DEBUG][sign] no matching role found for uid={uid}, using default serverId", flush=True)
-            logger.warning(f"[sign] no matching role found for uid={uid}, using default serverId")
-    except KuroError as e:
-        print(f"[DEBUG][sign] find_role_list failed: {e.message}", flush=True)
-        logger.error(f"[sign] find_role_list failed: {e.message}")
-
-    # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
-    if game_id != PGR_GAME_ID:
-        try:
-            logger.info(f"[sign] calling refresh_data...")
-            await client.refresh_data()
-            logger.info(f"[sign] refresh_data success")
-        except KuroError as e:
-            logger.error(f"[sign] refresh_data failed: code={e.code}, msg={e.message}")
-            if "BAT" in e.message or e.code == CODE_BAT_TOKEN_INVALID:
-                try:
-                    logger.info(f"[sign] trying BAT refresh + retry refresh_data...")
-                    await client.refresh_bat_token()
-                    await client.refresh_data()
-                    logger.info(f"[sign] refresh_data retry success")
-                except KuroError as e2:
-                    logger.error(f"[sign] refresh_data retry failed: {e2.message}")
-                    results.append(f"刷新数据失败: {e2.message}")
-                    return results
-            else:
-                results.append(f"刷新数据失败: {e.message}")
-                return results
-
-    # Game sign
+    # Game sign — directly call sign_in (includes sign_in_task_list check internally)
     results.append(await sign_game(client))
 
     # BBS tasks

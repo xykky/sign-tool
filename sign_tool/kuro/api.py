@@ -3,11 +3,9 @@ from __future__ import annotations
 import json
 import random
 import asyncio
-import socket
 from typing import Any
 
 import httpx
-import aiohttp
 
 from ..log import get_logger
 from .constants import (
@@ -21,7 +19,6 @@ from .constants import (
     LOGIN_URL,
     LOGIN_LOG_URL,
     REQUEST_TOKEN,
-    REFRESH_URL,
     FIND_ROLE_LIST_URL,
     GET_TASK_URL,
     FORUM_LIST_URL,
@@ -52,45 +49,13 @@ class KuroError(Exception):
         self.raw = raw
 
 
-def _get_local_ip() -> str:
-    try:
-        return socket.gethostbyname(socket.gethostname())
-    except Exception:
-        return "127.0.0.1"
-
-
-_PUBLIC_IP: str | None = None
-
-
-async def _get_public_ip() -> str:
-    global _PUBLIC_IP
-    if _PUBLIC_IP:
-        return _PUBLIC_IP
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            r = await c.get("https://event.kurobbs.com/event/ip")
-            _PUBLIC_IP = r.text.strip()
-            return _PUBLIC_IP
-    except Exception:
-        pass
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            r = await c.get("https://api.ipify.org/?format=json")
-            _PUBLIC_IP = r.json()["ip"]
-            return _PUBLIC_IP
-    except Exception:
-        pass
-    _PUBLIC_IP = _get_local_ip()
-    return _PUBLIC_IP
-
-
 def _base_headers(dev_code: str = "") -> dict[str, str]:
     return {
         "source": PLATFORM_SOURCE,
         "Content-Type": CONTENT_TYPE,
         "User-Agent": IOS_USER_AGENT,
         "version": KURO_VERSION,
-        "devCode": dev_code or f"{_get_local_ip()}, {IOS_USER_AGENT}",
+        "devCode": dev_code or f"CLI-{random.randint(100000, 999999)}",
     }
 
 
@@ -101,7 +66,7 @@ class KuroClient:
         self.game_id = game_id
         self.did = did or f"CLI-{random.randint(100000, 999999)}"
         self.bat = ""
-        self.server_id = ""  # Will be set from role list if available
+        self.server_id = ""
 
     async def _request(
         self,
@@ -109,9 +74,8 @@ class KuroClient:
         data: dict[str, Any],
         headers: dict[str, str] | None = None,
         max_retries: int = 3,
-        use_did_as_devcode: bool = True,
     ) -> dict[str, Any]:
-        h = _base_headers(self.did if use_did_as_devcode else "")
+        h = _base_headers(self.did)
         if headers:
             h.update(headers)
 
@@ -120,7 +84,6 @@ class KuroClient:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.post(url, headers=h, data=data)
                     raw = resp.json()
-                    # Parse nested data field
                     if isinstance(raw, dict) and isinstance(raw.get("data"), str):
                         try:
                             raw["data"] = json.loads(raw["data"])
@@ -134,33 +97,6 @@ class KuroClient:
                     raise KuroError(f"网络请求失败: {url}") from e
         raise KuroError(f"请求失败: {url}")
 
-    async def _authed_request(
-        self,
-        url: str,
-        data: dict[str, Any],
-        need_token: bool = False,
-    ) -> dict[str, Any]:
-        headers = {
-            "did": self.did,
-            "b-at": self.bat,
-        }
-        if need_token:
-            headers["token"] = self.cookie
-        return await self._request(url, data, headers)
-
-    async def login_log(self) -> bool:
-        """Validate login session (pre-heat for refresh_data)."""
-        headers = {
-            "token": self.cookie,
-            "devCode": self.did,
-            "version": KURO_VERSION,
-        }
-        result = await self._request(LOGIN_LOG_URL, {}, headers)
-        code = result.get("code", -1)
-        if code == CODE_TOKEN_INVALID:
-            return False
-        return code in (CODE_OK_ZERO, CODE_OK_HTTP)
-
     def _is_net(self) -> bool:
         try:
             return int(self.uid) >= 200000000
@@ -171,7 +107,6 @@ class KuroClient:
         if self.server_id:
             return self.server_id
         if self._is_net():
-            # 国际服: 根据 UID 前缀映射 serverId
             prefix = int(self.uid) // 100000000
             return NET_SERVER_ID_MAP.get(prefix, SERVER_ID_NET)
         return SERVER_ID
@@ -195,86 +130,11 @@ class KuroClient:
             "devCode": self.did,
             "version": KURO_VERSION,
         }
-        logger.info(f"[validate_login] URL: {LOGIN_LOG_URL}")
-        logger.info(f"[validate_login] headers: {headers}")
         data = await self._request(LOGIN_LOG_URL, {}, headers)
         code = data.get("code", -1)
-        logger.info(f"[validate_login] response: code={code}, msg={data.get('msg', '')}, data={data.get('data', '')}")
         if code == CODE_TOKEN_INVALID:
             return False
         return code in (CODE_OK_ZERO, CODE_OK_HTTP)
-
-    async def refresh_data(self) -> dict[str, Any]:
-        """Refresh game data. Use aiohttp to match RoverSign exactly."""
-        ip = await _get_public_ip()
-        headers = {
-            "source": PLATFORM_SOURCE,
-            "Content-Type": CONTENT_TYPE,
-            "User-Agent": IOS_USER_AGENT,
-            "version": KURO_VERSION,
-            "devCode": f"{ip}, {IOS_USER_AGENT}",
-            "did": self.did,
-            "b-at": self.bat,
-        }
-        data = {
-            "gameId": self.game_id,
-            "serverId": self._get_server_id(),
-            "roleId": self.uid,
-        }
-        logger.info(f"[refresh_data] === 完整请求信息 ===")
-        logger.info(f"[refresh_data] URL: {REFRESH_URL}")
-        logger.info(f"[refresh_data] public_ip: {ip}")
-        logger.info(f"[refresh_data] self.uid (roleId): {self.uid}")
-        logger.info(f"[refresh_data] self.cookie (token): {self.cookie[:20]}...{self.cookie[-10:]}" if len(self.cookie) > 30 else f"[refresh_data] self.cookie (token): {self.cookie}")
-        logger.info(f"[refresh_data] self.did: {self.did}")
-        logger.info(f"[refresh_data] self.bat: '{self.bat}'")
-        logger.info(f"[refresh_data] self.game_id: {self.game_id}")
-        logger.info(f"[refresh_data] server_id: {self._get_server_id()}")
-        logger.info(f"[refresh_data] 完整 headers: {json.dumps(headers, ensure_ascii=False)}")
-        logger.info(f"[refresh_data] 完整 data: {json.dumps(data, ensure_ascii=False)}")
-        for attempt in range(3):
-            try:
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=True)) as session:
-                    async with session.request(
-                        "POST",
-                        url=REFRESH_URL,
-                        headers=headers,
-                        data=data,
-                        timeout=aiohttp.ClientTimeout(15),
-                    ) as resp:
-                        raw_text = await resp.text()
-                        logger.info(f"[refresh_data] === 响应信息 ===")
-                        logger.info(f"[refresh_data] status_code: {resp.status}")
-                        logger.info(f"[refresh_data] response_body: {raw_text}")
-                        try:
-                            result = json.loads(raw_text)
-                        except json.JSONDecodeError:
-                            result = {"code": -1, "data": raw_text}
-                        if isinstance(result, dict) and isinstance(result.get("data"), str):
-                            try:
-                                result["data"] = json.loads(result["data"])
-                            except (json.JSONDecodeError, TypeError):
-                                pass
-                        logger.info(f"[refresh_data] parsed result: {result}")
-                        break
-            except Exception as e:
-                logger.error(f"[refresh_data] attempt {attempt+1} failed: {e}")
-                if attempt < 2:
-                    await asyncio.sleep(1.0 * (attempt + 1))
-                else:
-                    raise KuroError(f"网络请求失败: {REFRESH_URL}") from e
-
-        code = result.get("code", -1)
-        logger.info(f"[refresh_data] response code={code}, msg={result.get('msg', '')}")
-        if code == CODE_BAT_TOKEN_INVALID:
-            raise KuroError("BAT token 已失效", code=code)
-        if code not in (CODE_OK_ZERO, CODE_OK_HTTP):
-            raise KuroError(
-                result.get("msg", "刷新数据失败"),
-                code=code,
-                raw=result,
-            )
-        return result
 
     async def refresh_bat_token(self) -> str:
         """Request a new BAT token. Returns new token string."""
@@ -297,7 +157,6 @@ class KuroClient:
 
     async def sign_in(self) -> dict[str, Any]:
         """Execute game sign-in."""
-        # First check if already signed
         task_list = await self._sign_in_task_list()
         is_signed = False
         if isinstance(task_list, dict):
@@ -349,7 +208,7 @@ class KuroClient:
         return {}
 
     async def find_role_list(self) -> list[dict[str, Any]]:
-        """Get game role list (for PGR serverId)."""
+        """Get game role list."""
         headers = {
             "token": self.cookie,
             "did": self.did,
@@ -374,7 +233,6 @@ class KuroClient:
         result = await self._request(SIGN_IN_URL, data, headers)
         code = result.get("code", -1)
         if code not in (CODE_OK_ZERO, CODE_OK_HTTP):
-            # Already signed is not an error
             if "已签" in result.get("msg", "") or "重复" in result.get("msg", ""):
                 return {"already_signed": True}
             raise KuroError(result.get("msg", "BBS签到失败"), code=code, raw=result)
