@@ -220,21 +220,23 @@ class KuroClient:
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
+        logger.info(f"[refresh_data] === 完整请求信息 ===")
         logger.info(f"[refresh_data] URL: {REFRESH_URL}")
-        logger.info(f"[refresh_data] headers: {headers}")
-        logger.info(f"[refresh_data] data: {data}")
         logger.info(f"[refresh_data] public_ip: {ip}")
+        logger.info(f"[refresh_data] self.uid (roleId): {self.uid}")
+        logger.info(f"[refresh_data] self.cookie (token): {self.cookie[:20]}...{self.cookie[-10:]}" if len(self.cookie) > 30 else f"[refresh_data] self.cookie (token): {self.cookie}")
         logger.info(f"[refresh_data] self.did: {self.did}")
-        logger.info(f"[refresh_data] self.bat: {self.bat}")
-        logger.info(f"[refresh_data] self.uid: {self.uid}")
+        logger.info(f"[refresh_data] self.bat: '{self.bat}'")
         logger.info(f"[refresh_data] self.game_id: {self.game_id}")
         logger.info(f"[refresh_data] server_id: {self._get_server_id()}")
+        logger.info(f"[refresh_data] 完整 headers: {json.dumps(headers, ensure_ascii=False)}")
+        logger.info(f"[refresh_data] 完整 data: {json.dumps(data, ensure_ascii=False)}")
         for attempt in range(3):
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.post(REFRESH_URL, headers=headers, data=data)
+                    logger.info(f"[refresh_data] === 响应信息 ===")
                     logger.info(f"[refresh_data] status_code: {resp.status_code}")
-                    logger.info(f"[refresh_data] response_headers: {dict(resp.headers)}")
                     logger.info(f"[refresh_data] response_body: {resp.text}")
                     result = resp.json()
                     if isinstance(result, dict) and isinstance(result.get("data"), str):
