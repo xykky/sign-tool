@@ -34,34 +34,31 @@ cd sign-tool
 sudo bash install.sh sign.yourdomain.com
 ```
 
-安装脚本会自动完成：
-1. 安装系统依赖（python3、nginx、git）
-2. 克隆项目到 `/opt/sign-tool`
-3. 创建 Python 虚拟环境并安装依赖
-4. 配置 systemd 服务
-5. 配置 Nginx 反向代理
+安装脚本会在**当前目录**自动完成：
+1. 安装系统依赖（python3、nginx）
+2. 创建 Python 虚拟环境并安装依赖
+3. 配置 systemd 服务
+4. 配置 Nginx 反向代理
 
 安装后编辑配置文件并填入账号信息：
 ```bash
-nano /opt/sign-tool/config.toml
+nano config.toml
 systemctl restart sign-tool
 ```
 
 ## 更新
 
-```bash
-cd /opt/sign-tool
-sudo bash update.sh
-```
-
-## 卸载
+三种方式任选：
 
 ```bash
-# 完全卸载
-sudo bash uninstall.sh
+# 方式 1: 命令行
+cd sign-tool && sudo bash update.sh
 
-# 保留配置和数据库（方便以后重新部署）
-sudo bash uninstall.sh --keep-data
+# 方式 2: Web 界面
+# 打开网页 → 程序更新 → 检查更新
+
+# 方式 3: 手动
+cd sign-tool && git pull && source .venv/bin/activate && pip install -e . && systemctl restart sign-tool
 ```
 
 ## 命令行用法
@@ -84,10 +81,12 @@ sign-tool purge --days 30                        # 清理旧记录
 ## 服务器管理
 
 ```bash
-systemctl status sign-tool    # 查看状态
-systemctl restart sign-tool   # 重启
-journalctl -u sign-tool -f    # 查看日志
-nano /opt/sign-tool/config.toml  # 编辑配置
+systemctl status sign-tool       # 查看状态
+systemctl restart sign-tool      # 重启
+journalctl -u sign-tool -f       # 查看日志
+nano config.toml                 # 编辑配置
+sudo bash uninstall.sh           # 卸载
+sudo bash uninstall.sh --keep-data  # 卸载但保留配置和数据库
 ```
 
 ## 配置说明

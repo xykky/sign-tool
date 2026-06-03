@@ -2,18 +2,18 @@
 # ===========================================
 #  Sign Tool 更新脚本
 #  用法: sudo bash update.sh
+#  在项目根目录运行
 # ===========================================
 
 set -e
 
-INSTALL_DIR="/opt/sign-tool"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
-if [ ! -d "$INSTALL_DIR/.git" ]; then
-    echo "错误: $INSTALL_DIR 不是 git 仓库，请先运行 install.sh"
+if [ ! -d ".git" ]; then
+    echo "错误: 当前目录不是 git 仓库"
     exit 1
 fi
-
-cd "$INSTALL_DIR"
 
 echo "=========================================="
 echo "  Sign Tool 更新"
@@ -50,6 +50,4 @@ echo ""
 echo "=========================================="
 echo "  更新完成！"
 echo "=========================================="
-echo ""
-echo "  查看日志: journalctl -u sign-tool -f"
 echo ""

@@ -320,6 +320,22 @@
         <div id="notify-msg" class="msg"></div>
     </div>
 
+    <!-- 更新 -->
+    <div class="card">
+        <h2>程序更新</h2>
+        <div class="schedule-status">
+            <span class="status-dot off" id="update-dot"></span>
+            <div>
+                <div class="status-text" id="update-status-text">点击按钮检查更新</div>
+                <div class="status-detail" id="update-status-detail">从 GitHub 拉取最新代码并重启服务</div>
+            </div>
+        </div>
+        <div class="schedule-actions">
+            <button class="btn-primary" onclick="doUpdate()" id="btn-update">检查更新</button>
+        </div>
+        <div id="update-msg" class="msg"></div>
+    </div>
+
     <script>
         // ===== 工具函数 =====
         function showMsg(id, text, ok) {
@@ -767,6 +783,46 @@
                 showMsg('notify-msg', data.msg, data.ok);
             }).catch(function(e) {
                 showMsg('notify-msg', '测试失败: ' + e.message, false);
+            });
+        }
+
+        // ===== 更新 =====
+        function doUpdate() {
+            var btn = document.getElementById('btn-update');
+            var dot = document.getElementById('update-dot');
+            var textEl = document.getElementById('update-status-text');
+            var detailEl = document.getElementById('update-status-detail');
+
+            btn.disabled = true;
+            btn.textContent = '更新中...';
+            dot.className = 'status-dot';
+            textEl.textContent = '正在从 GitHub 拉取更新...';
+            detailEl.textContent = '请稍候，完成后服务会自动重启';
+
+            fetch('/api/update', {method: 'POST'}).then(function(r) {
+                return r.json();
+            }).then(function(data) {
+                showMsg('update-msg', data.msg, data.ok);
+                if (data.ok) {
+                    dot.className = 'status-dot on';
+                    textEl.textContent = '更新完成';
+                    detailEl.textContent = data.msg.split('\n')[0];
+                    // 等待服务重启后刷新页面
+                    setTimeout(function() { location.reload(); }, 3000);
+                } else {
+                    dot.className = 'status-dot off';
+                    textEl.textContent = '更新失败';
+                    detailEl.textContent = data.msg;
+                }
+                btn.disabled = false;
+                btn.textContent = '检查更新';
+            }).catch(function(e) {
+                showMsg('update-msg', '更新失败: ' + e.message, false);
+                dot.className = 'status-dot off';
+                textEl.textContent = '更新失败';
+                detailEl.textContent = e.message;
+                btn.disabled = false;
+                btn.textContent = '检查更新';
             });
         }
 

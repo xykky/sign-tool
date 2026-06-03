@@ -3,12 +3,12 @@
 #  Sign Tool 卸载脚本
 #  用法: sudo bash uninstall.sh [--keep-data]
 #
-#  --keep-data  保留配置文件和数据库，方便以后重新部署
+#  --keep-data  保留配置文件和数据库
 # ===========================================
 
 set -e
 
-INSTALL_DIR="/opt/sign-tool"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_NAME="sign-tool"
 NGINX_CONF="/etc/nginx/sites-available/$SERVICE_NAME"
 NGINX_LINK="/etc/nginx/sites-enabled/$SERVICE_NAME"
@@ -40,25 +40,23 @@ if command -v nginx &>/dev/null; then
 fi
 echo "  已删除 Nginx 配置"
 
-# 4. 处理安装目录
-echo "[4/4] 处理安装目录..."
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo "  安装目录不存在，跳过"
+# 4. 处理项目目录
+echo "[4/4] 处理项目目录..."
+if [ ! -d "$SCRIPT_DIR/.git" ]; then
+    echo "  当前目录不是 git 仓库，跳过文件清理"
 else
     if $KEEP_DATA; then
         echo "  --keep-data 模式: 仅保留 config.toml 和 sign.db"
-        cd "$INSTALL_DIR"
-        # 保留 .git, config.toml, sign.db，删除其他
-        find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 \
+        cd "$SCRIPT_DIR"
+        find "$SCRIPT_DIR" -mindepth 1 -maxdepth 1 \
             ! -name ".git" \
             ! -name "config.toml" \
             ! -name "sign.db" \
             -exec rm -rf {} + 2>/dev/null || true
         echo "  已清理代码文件"
-        echo "  保留: $INSTALL_DIR/config.toml, $INSTALL_DIR/sign.db, $INSTALL_DIR/.git"
     else
-        rm -rf "$INSTALL_DIR"
-        echo "  已删除 $INSTALL_DIR"
+        echo "  注意: 项目文件未删除（避免误删其他文件）"
+        echo "  如需完全删除: rm -rf $SCRIPT_DIR"
     fi
 fi
 
@@ -68,9 +66,7 @@ echo "  卸载完成！"
 echo "=========================================="
 echo ""
 if $KEEP_DATA; then
-    echo "  配置和数据库保留在: $INSTALL_DIR"
-    echo "  重新部署: cd $INSTALL_DIR && bash install.sh"
-else
-    echo "  所有文件已删除"
+    echo "  配置和数据库保留在: $SCRIPT_DIR"
+    echo "  重新部署: cd $SCRIPT_DIR && sudo bash install.sh"
 fi
 echo ""

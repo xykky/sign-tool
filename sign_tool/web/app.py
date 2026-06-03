@@ -369,3 +369,54 @@ async def test_notify():
             return {"ok": False, "msg": "推送发送失败，请检查配置"}
     except Exception as e:
         return {"ok": False, "msg": f"推送测试失败: {e}"}
+
+
+# ===== 更新 =====
+
+@app.post("/api/update")
+async def update_project():
+    """Pull latest code from git and restart service."""
+    import subprocess
+    import sys
+
+    project_dir = str(Path(__file__).parent.parent.parent)
+
+    try:
+        # git pull
+        result = subprocess.run(
+            ["git", "pull", "--ff-only"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        git_output = result.stdout.strip()
+        if result.returncode != 0:
+            # try git fetch + reset
+            subprocess.run(["git", "fetch", "origin"], cwd=project_dir, timeout=30)
+            result = subprocess.run(
+                ["git", "reset", "--hard", "origin/master"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            git_output = result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
+
+        if "Already up to date" in git_output or "已经是最新的" in git_output:
+            return {"ok": True, "msg": f"已是最新版本\n{git_output}"}
+
+        # pip install
+        pip_result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-e", ".", "-q"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+        return {"ok": True, "msg": f"更新成功！重启中...\n{git_output}"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "msg": "更新超时，请手动执行 update.sh"}
+    except Exception as e:
+        return {"ok": False, "msg": f"更新失败: {e}"}
