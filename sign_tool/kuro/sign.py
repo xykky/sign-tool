@@ -142,15 +142,21 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     results = [f"[库洛 {uid} ({game})]"]
 
     # Validate login (matching RoverSign: handle BAT token invalid)
+    logger.info(f"[sign] uid={uid} game={game} did={did}")
     try:
-        if not await client.validate_login():
+        login_ok = await client.validate_login()
+        logger.info(f"[sign] validate_login result: {login_ok}")
+        if not login_ok:
             # Could be token expired or BAT invalid — try BAT refresh first
             try:
+                logger.info(f"[sign] validate_login failed, trying BAT refresh...")
                 await client.refresh_bat_token()
+                logger.info(f"[sign] BAT refresh done, retrying validate_login...")
                 if not await client.validate_login():
                     results.append("登录已过期，请重新登录")
                     return results
-            except KuroError:
+            except KuroError as bat_e:
+                logger.error(f"[sign] BAT refresh failed: {bat_e.message}")
                 results.append("登录已过期，请重新登录")
                 return results
     except KuroError as e:
@@ -160,13 +166,19 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     # Refresh data (and bat token if needed) — PGR 没有 aki refresh 接口，跳过
     if game_id != PGR_GAME_ID:
         try:
+            logger.info(f"[sign] calling refresh_data...")
             await client.refresh_data()
+            logger.info(f"[sign] refresh_data success")
         except KuroError as e:
+            logger.error(f"[sign] refresh_data failed: code={e.code}, msg={e.message}")
             if "BAT" in e.message or e.code == CODE_BAT_TOKEN_INVALID:
                 try:
+                    logger.info(f"[sign] trying BAT refresh + retry refresh_data...")
                     await client.refresh_bat_token()
                     await client.refresh_data()
+                    logger.info(f"[sign] refresh_data retry success")
                 except KuroError as e2:
+                    logger.error(f"[sign] refresh_data retry failed: {e2.message}")
                     results.append(f"刷新数据失败: {e2.message}")
                     return results
             else:

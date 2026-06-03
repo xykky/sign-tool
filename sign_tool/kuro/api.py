@@ -194,8 +194,11 @@ class KuroClient:
             "devCode": self.did,
             "version": KURO_VERSION,
         }
+        logger.info(f"[validate_login] URL: {LOGIN_LOG_URL}")
+        logger.info(f"[validate_login] headers: {headers}")
         data = await self._request(LOGIN_LOG_URL, {}, headers)
         code = data.get("code", -1)
+        logger.info(f"[validate_login] response: code={code}, msg={data.get('msg', '')}, data={data.get('data', '')}")
         if code == CODE_TOKEN_INVALID:
             return False
         return code in (CODE_OK_ZERO, CODE_OK_HTTP)
@@ -217,24 +220,39 @@ class KuroClient:
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
+        logger.info(f"[refresh_data] URL: {REFRESH_URL}")
+        logger.info(f"[refresh_data] headers: {headers}")
+        logger.info(f"[refresh_data] data: {data}")
+        logger.info(f"[refresh_data] public_ip: {ip}")
+        logger.info(f"[refresh_data] self.did: {self.did}")
+        logger.info(f"[refresh_data] self.bat: {self.bat}")
+        logger.info(f"[refresh_data] self.uid: {self.uid}")
+        logger.info(f"[refresh_data] self.game_id: {self.game_id}")
+        logger.info(f"[refresh_data] server_id: {self._get_server_id()}")
         for attempt in range(3):
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.post(REFRESH_URL, headers=headers, data=data)
+                    logger.info(f"[refresh_data] status_code: {resp.status_code}")
+                    logger.info(f"[refresh_data] response_headers: {dict(resp.headers)}")
+                    logger.info(f"[refresh_data] response_body: {resp.text}")
                     result = resp.json()
                     if isinstance(result, dict) and isinstance(result.get("data"), str):
                         try:
                             result["data"] = json.loads(result["data"])
                         except (json.JSONDecodeError, TypeError):
                             pass
+                    logger.info(f"[refresh_data] parsed result: {result}")
                     break
             except (httpx.HTTPError, httpx.TimeoutException) as e:
+                logger.error(f"[refresh_data] attempt {attempt+1} failed: {e}")
                 if attempt < 2:
                     await asyncio.sleep(1.0 * (attempt + 1))
                 else:
                     raise KuroError(f"网络请求失败: {REFRESH_URL}") from e
 
         code = result.get("code", -1)
+        logger.info(f"[refresh_data] response code={code}, msg={result.get('msg', '')}")
         if code == CODE_BAT_TOKEN_INVALID:
             raise KuroError("BAT token 已失效", code=code)
         if code not in (CODE_OK_ZERO, CODE_OK_HTTP):
