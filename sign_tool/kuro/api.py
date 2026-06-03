@@ -58,6 +58,31 @@ def _get_local_ip() -> str:
         return "127.0.0.1"
 
 
+_PUBLIC_IP: str | None = None
+
+
+async def _get_public_ip() -> str:
+    global _PUBLIC_IP
+    if _PUBLIC_IP:
+        return _PUBLIC_IP
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            r = await c.get("https://event.kurobbs.com/event/ip")
+            _PUBLIC_IP = r.text.strip()
+            return _PUBLIC_IP
+    except Exception:
+        pass
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            r = await c.get("https://api.ipify.org/?format=json")
+            _PUBLIC_IP = r.json()["ip"]
+            return _PUBLIC_IP
+    except Exception:
+        pass
+    _PUBLIC_IP = _get_local_ip()
+    return _PUBLIC_IP
+
+
 def _base_headers(dev_code: str = "") -> dict[str, str]:
     return {
         "source": PLATFORM_SOURCE,
@@ -176,8 +201,14 @@ class KuroClient:
         return code in (CODE_OK_ZERO, CODE_OK_HTTP)
 
     async def refresh_data(self) -> dict[str, Any]:
-        """Refresh game data. May return bat token invalid."""
+        """Refresh game data. Build request exactly matching RoverSign."""
+        ip = await _get_public_ip()
         headers = {
+            "source": PLATFORM_SOURCE,
+            "Content-Type": CONTENT_TYPE,
+            "User-Agent": IOS_USER_AGENT,
+            "version": KURO_VERSION,
+            "devCode": f"{ip}, {IOS_USER_AGENT}",
             "did": self.did,
             "b-at": self.bat,
         }
@@ -186,7 +217,23 @@ class KuroClient:
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
-        result = await self._request(REFRESH_URL, data, headers, use_did_as_devcode=False)
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.post(REFRESH_URL, headers=headers, data=data)
+                    result = resp.json()
+                    if isinstance(result, dict) and isinstance(result.get("data"), str):
+                        try:
+                            result["data"] = json.loads(result["data"])
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    break
+            except (httpx.HTTPError, httpx.TimeoutException) as e:
+                if attempt < 2:
+                    await asyncio.sleep(1.0 * (attempt + 1))
+                else:
+                    raise KuroError(f"网络请求失败: {REFRESH_URL}") from e
+
         code = result.get("code", -1)
         if code == CODE_BAT_TOKEN_INVALID:
             raise KuroError("BAT token 已失效", code=code)
