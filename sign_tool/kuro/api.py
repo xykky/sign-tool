@@ -7,6 +7,7 @@ import socket
 from typing import Any
 
 import httpx
+import aiohttp
 
 from ..log import get_logger
 from .constants import (
@@ -204,7 +205,7 @@ class KuroClient:
         return code in (CODE_OK_ZERO, CODE_OK_HTTP)
 
     async def refresh_data(self) -> dict[str, Any]:
-        """Refresh game data. Build request exactly matching RoverSign."""
+        """Refresh game data. Use aiohttp to match RoverSign exactly."""
         ip = await _get_public_ip()
         headers = {
             "source": PLATFORM_SOURCE,
@@ -233,20 +234,30 @@ class KuroClient:
         logger.info(f"[refresh_data] 完整 data: {json.dumps(data, ensure_ascii=False)}")
         for attempt in range(3):
             try:
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.post(REFRESH_URL, headers=headers, data=data)
-                    logger.info(f"[refresh_data] === 响应信息 ===")
-                    logger.info(f"[refresh_data] status_code: {resp.status_code}")
-                    logger.info(f"[refresh_data] response_body: {resp.text}")
-                    result = resp.json()
-                    if isinstance(result, dict) and isinstance(result.get("data"), str):
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=True)) as session:
+                    async with session.request(
+                        "POST",
+                        url=REFRESH_URL,
+                        headers=headers,
+                        data=data,
+                        timeout=aiohttp.ClientTimeout(15),
+                    ) as resp:
+                        raw_text = await resp.text()
+                        logger.info(f"[refresh_data] === 响应信息 ===")
+                        logger.info(f"[refresh_data] status_code: {resp.status}")
+                        logger.info(f"[refresh_data] response_body: {raw_text}")
                         try:
-                            result["data"] = json.loads(result["data"])
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                    logger.info(f"[refresh_data] parsed result: {result}")
-                    break
-            except (httpx.HTTPError, httpx.TimeoutException) as e:
+                            result = json.loads(raw_text)
+                        except json.JSONDecodeError:
+                            result = {"code": -1, "data": raw_text}
+                        if isinstance(result, dict) and isinstance(result.get("data"), str):
+                            try:
+                                result["data"] = json.loads(result["data"])
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                        logger.info(f"[refresh_data] parsed result: {result}")
+                        break
+            except Exception as e:
                 logger.error(f"[refresh_data] attempt {attempt+1} failed: {e}")
                 if attempt < 2:
                     await asyncio.sleep(1.0 * (attempt + 1))
