@@ -113,6 +113,19 @@ class KuroClient:
             headers["token"] = self.cookie
         return await self._request(url, data, headers)
 
+    async def login_log(self) -> bool:
+        """Validate login session (pre-heat for refresh_data)."""
+        headers = {
+            "token": self.cookie,
+            "devCode": self.did,
+            "version": KURO_VERSION,
+        }
+        result = await self._request(LOGIN_LOG_URL, {}, headers)
+        code = result.get("code", -1)
+        if code == CODE_TOKEN_INVALID:
+            return False
+        return code in (CODE_OK_ZERO, CODE_OK_HTTP)
+
     def _is_net(self) -> bool:
         try:
             return int(self.uid) >= 200000000
@@ -142,7 +155,12 @@ class KuroClient:
 
     async def validate_login(self) -> bool:
         """Check if cookie is still valid."""
-        data = await self._authed_request(LOGIN_LOG_URL, {}, need_token=True)
+        headers = {
+            "token": self.cookie,
+            "devCode": self.did,
+            "version": KURO_VERSION,
+        }
+        data = await self._request(LOGIN_LOG_URL, {}, headers)
         code = data.get("code", -1)
         if code == CODE_TOKEN_INVALID:
             return False
@@ -150,12 +168,16 @@ class KuroClient:
 
     async def refresh_data(self) -> dict[str, Any]:
         """Refresh game data. May return bat token invalid."""
+        headers = {
+            "did": self.did,
+            "b-at": self.bat,
+        }
         data = {
             "gameId": self.game_id,
             "serverId": self._get_server_id(),
             "roleId": self.uid,
         }
-        result = await self._authed_request(REFRESH_URL, data, need_token=True)
+        result = await self._request(REFRESH_URL, data, headers)
         code = result.get("code", -1)
         if code == CODE_BAT_TOKEN_INVALID:
             raise KuroError("BAT token 已失效", code=code)
