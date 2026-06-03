@@ -284,8 +284,7 @@
             </div>
         </div>
         <div class="schedule-actions">
-            <input type="time" id="sched-time" value="06:00">
-            <button class="btn-primary" onclick="saveConfig()" id="btn-save-sched">保存设置</button>
+            <input type="time" id="sched-time" value="06:00" onchange="onTimeChange()">
             <button class="btn-warning" onclick="toggleSchedule()" id="btn-toggle-sched">启用定时</button>
         </div>
         <div id="config-msg" class="msg"></div>
@@ -652,13 +651,14 @@
             }
         }
 
-        function saveConfig() {
+        function onTimeChange() {
             var time = document.getElementById('sched-time').value;
-
-            fetch('/api/config', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({time: time, repeat: false, enabled: true}),
+            fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+                return fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({time: time, repeat: false, enabled: data.enabled}),
+                });
             }).then(function(r) { return r.json(); }).then(function(data) {
                 showMsg('config-msg', data.msg, data.ok);
                 if (data.ok) { loadConfig(); }
