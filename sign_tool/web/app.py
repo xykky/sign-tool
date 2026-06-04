@@ -54,6 +54,10 @@ async def startup():
     _config = load_config("config.toml")
     await db.init_db(_config.db_path)
 
+    # Start background scheduler
+    from ..scheduler import start_scheduler
+    start_scheduler(_config.config_path)
+
 
 @app.on_event("shutdown")
 async def shutdown():
