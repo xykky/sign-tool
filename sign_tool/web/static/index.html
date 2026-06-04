@@ -268,7 +268,6 @@
         <h2>执行签到</h2>
         <div class="form-row">
             <button class="btn-success" onclick="doSign()" id="btn-sign">开始签到</button>
-            <button class="btn-outline" onclick="refreshStatus()">刷新状态</button>
         </div>
         <div id="sign-log" class="sign-log"></div>
     </div>
@@ -297,7 +296,7 @@
             <span class="status-dot off"></span>
             <div>
                 <div class="status-text">加载中...</div>
-                <div class="status-detail">签到完成后推送结果到手机</div>
+                <div class="status-detail">签到完成后推送结果</div>
             </div>
         </div>
         <div class="form-group">
@@ -704,36 +703,45 @@
         // ===== 推送配置 =====
         function loadNotify() {
             fetch('/api/notify').then(function(r) { return r.json(); }).then(function(data) {
-                updateNotifyStatus(data.enabled);
-                // Don't fill in masked values
-                if (data.serverchan.sckey && !data.serverchan.sckey.includes('...')) {
+                var services = [];
+                if (data.serverchan && data.serverchan.sckey && !data.serverchan.sckey.includes('...')) {
                     document.getElementById('notify-sckey').value = data.serverchan.sckey;
                 }
-                if (data.telegram.bot_token && !data.telegram.bot_token.includes('...')) {
-                    document.getElementById('notify-tg-token').value = data.telegram.bot_token;
+                if (data.serverchan && data.serverchan.sckey) { services.push('Server酱'); }
+                if (data.telegram && data.telegram.bot_token) {
+                    if (!data.telegram.bot_token.includes('...')) {
+                        document.getElementById('notify-tg-token').value = data.telegram.bot_token;
+                    }
+                    services.push('Telegram');
                 }
-                if (data.telegram.chat_id) {
+                if (data.telegram && data.telegram.chat_id) {
                     document.getElementById('notify-tg-chat').value = data.telegram.chat_id;
                 }
+                updateNotifyStatus(data.enabled, services.join(' + '));
             }).catch(function() {});
         }
 
-        function updateNotifyStatus(enabled) {
+        function updateNotifyStatus(enabled, services) {
             var statusEl = document.getElementById('notify-status');
             var toggleBtn = document.getElementById('btn-toggle-notify');
             var dot = statusEl.querySelector('.status-dot');
             var textEl = statusEl.querySelector('.status-text');
+            var detailEl = statusEl.querySelector('.status-detail');
 
             if (enabled) {
                 dot.className = 'status-dot on';
                 textEl.textContent = '推送通知已启用';
                 toggleBtn.textContent = '关闭推送';
                 toggleBtn.className = 'btn-danger';
+                if (services) {
+                    detailEl.textContent = '当前服务: ' + services;
+                }
             } else {
                 dot.className = 'status-dot off';
                 textEl.textContent = '推送通知未启用';
                 toggleBtn.textContent = '启用推送';
                 toggleBtn.className = 'btn-warning';
+                detailEl.textContent = '签到完成后推送结果';
             }
         }
 
@@ -742,15 +750,18 @@
             var tgToken = document.getElementById('notify-tg-token').value.trim();
             var tgChat = document.getElementById('notify-tg-chat').value.trim();
 
-            fetch('/api/notify', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    enabled: true,
-                    sckey: sckey,
-                    bot_token: tgToken,
-                    chat_id: tgChat,
-                }),
+            // Preserve current enabled state
+            fetch('/api/notify').then(function(r) { return r.json(); }).then(function(current) {
+                return fetch('/api/notify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        enabled: current.enabled,
+                        sckey: sckey,
+                        bot_token: tgToken,
+                        chat_id: tgChat,
+                    }),
+                });
             }).then(function(r) { return r.json(); }).then(function(data) {
                 showMsg('notify-msg', data.msg, data.ok);
                 if (data.ok) { loadNotify(); }

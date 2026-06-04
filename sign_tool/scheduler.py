@@ -101,8 +101,8 @@ def _scheduler_loop(config_path: str):
                 loop = asyncio.new_event_loop()
                 try:
                     loop.run_until_complete(db.init_db(config.db_path))
-                    from .runner import run_all
-                    loop.run_until_complete(run_all(config, platform=None))
+                    from .runner import run_all_with_notify
+                    loop.run_until_complete(run_all_with_notify(config, platform=None))
                     logger.info("[定时] 签到完成")
                 finally:
                     loop.run_until_complete(db.close_db())
