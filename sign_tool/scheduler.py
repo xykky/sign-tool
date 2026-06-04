@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from .log import get_logger
@@ -12,10 +12,17 @@ from .config import load_config
 
 logger = get_logger()
 
+# UTC+8 北京时间
+_CN_TZ = timezone(timedelta(hours=8))
+
+
+def _now_cn() -> datetime:
+    return datetime.now(_CN_TZ)
+
 
 def _get_next_delay(times: list[tuple[int, int]]) -> float:
-    """Calculate seconds until the next scheduled time."""
-    now = datetime.now()
+    """Calculate seconds until the next scheduled time (UTC+8)."""
+    now = _now_cn()
     current_hm = (now.hour, now.minute)
 
     for h, m in sorted(times):
