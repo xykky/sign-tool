@@ -7,8 +7,8 @@ import threading
 from datetime import datetime
 from typing import Optional
 
-from ..log import get_logger
-from ..config import load_config
+from .log import get_logger
+from .config import load_config
 
 logger = get_logger()
 
@@ -89,12 +89,12 @@ def _scheduler_loop(config_path: str):
             # Full sleep completed — time to sign
             logger.info("[定时] 开始执行签到...")
             try:
-                from .. import db
+                from . import db
 
                 loop = asyncio.new_event_loop()
                 try:
                     loop.run_until_complete(db.init_db(config.db_path))
-                    from ..runner import run_all
+                    from .runner import run_all
                     loop.run_until_complete(run_all(config, platform=None))
                     logger.info("[定时] 签到完成")
                 finally:

@@ -422,12 +422,12 @@ async def update_project():
 
         # delayed restart: give client time to receive response
         def _restart():
-            time.sleep(2)
+            time.sleep(5)
             subprocess.run(["systemctl", "restart", "sign-tool"])
 
         threading.Thread(target=_restart, daemon=True).start()
 
-        return {"ok": True, "msg": f"更新成功！2秒后自动重启...\n{git_output}"}
+        return {"ok": True, "msg": f"更新成功！5秒后自动重启...\n{git_output}"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "msg": "更新超时，请手动执行 update.sh"}
     except Exception as e:
