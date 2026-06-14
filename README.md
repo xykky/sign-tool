@@ -150,12 +150,6 @@ chat_id = ""
 3. 在 Web 界面或配置文件中填入 Token 和 Chat ID
 4. 点击"测试推送"验证
 
-## Cloudflare 配置（可选）
-
-1. 添加域名到 Cloudflare
-2. DNS 添加 A 记录指向服务器 IP，开启橙色云朵
-3. SSL/TLS 设置为 Full
-4. 访问 `https://sign.yourdomain.com`
 
 ## 项目结构
 
@@ -176,7 +170,6 @@ sign-tool/
 ├── install.sh                  # 一键安装
 ├── update.sh                   # 一键更新
 ├── uninstall.sh                # 卸载
-├── sign-tool.service           # systemd 服务
 └── nginx-sign-tool.conf        # Nginx 配置
 ```
 
