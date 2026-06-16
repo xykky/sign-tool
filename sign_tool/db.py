@@ -73,6 +73,8 @@ _MIGRATE_SQL = [
 
 async def init_db(path: str = "sign.db") -> None:
     global _db
+    if _db is not None:
+        return
     _db = await aiosqlite.connect(path)
     await _db.executescript(_CREATE_SQL)
     await _db.commit()

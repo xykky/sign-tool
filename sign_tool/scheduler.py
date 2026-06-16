@@ -126,15 +126,9 @@ def _scheduler_loop(config_path: str):
     logger.info("[定时] 调度器已启动")
 
     while True:
-        # 读取所有用户的定时配置
+        # 读取所有用户的定时配置（复用 Web 应用已建立的全局连接）
         try:
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(db.init_db(_get_db_path(config_path)))
-                schedules = loop.run_until_complete(db.get_all_schedules())
-            finally:
-                loop.run_until_complete(db.close_db())
-                loop.close()
+            schedules = asyncio.run(db.get_all_schedules())
         except Exception as e:
             logger.error(f"[定时] 读取用户定时配置失败: {e}")
             asyncio.run(asyncio.sleep(60))
@@ -183,13 +177,7 @@ def _scheduler_loop(config_path: str):
 
             # Check if schedules changed (re-read and compare)
             try:
-                loop2 = asyncio.new_event_loop()
-                try:
-                    loop2.run_until_complete(db.init_db(_get_db_path(config_path)))
-                    fresh_schedules = loop2.run_until_complete(db.get_all_schedules())
-                finally:
-                    loop2.run_until_complete(db.close_db())
-                    loop2.close()
+                fresh_schedules = asyncio.run(db.get_all_schedules())
 
                 fresh_time_users: dict[tuple[int, int], list[int]] = defaultdict(list)
                 for s in fresh_schedules:
@@ -210,25 +198,12 @@ def _scheduler_loop(config_path: str):
         # Full sleep completed — time to sign
         logger.info("[定时] 开始执行签到...")
         try:
-            sign_loop = asyncio.new_event_loop()
-            try:
-                sign_loop.run_until_complete(db.init_db(_get_db_path(config_path)))
-                # 只签到当前时间点匹配的用户
-                user_ids = time_users.get(target_time, [])
-                if user_ids:
-                    sign_loop.run_until_complete(_sign_users(config_path, user_ids))
-                logger.info("[定时] 签到完成")
-            finally:
-                sign_loop.run_until_complete(db.close_db())
-                sign_loop.close()
+            user_ids = time_users.get(target_time, [])
+            if user_ids:
+                asyncio.run(_sign_users(config_path, user_ids))
+            logger.info("[定时] 签到完成")
         except Exception as e:
             logger.error(f"[定时] 签到异常: {e}")
-
-
-def _get_db_path(config_path: str) -> str:
-    """Read db_path from config."""
-    config = load_config(config_path)
-    return config.db_path
 
 
 _scheduler_thread: Optional[threading.Thread] = None
