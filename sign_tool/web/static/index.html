@@ -544,6 +544,10 @@
                     doLogout();
                     throw new Error('登录已过期，请重新登录');
                 }
+                // SSE 响应不解析 JSON
+                if (options.stream) {
+                    return r;
+                }
                 return r.json();
             });
         }
@@ -897,7 +901,7 @@
             logEl.innerHTML = '';
             logEl.classList.add('show');
 
-            apiFetch('/api/my/sign', {method: 'POST'}).then(function(resp) {
+            apiFetch('/api/my/sign', {method: 'POST', stream: true}).then(function(resp) {
                 var reader = resp.body.getReader();
                 var decoder = new TextDecoder();
                 var buffer = '';
@@ -1167,7 +1171,7 @@
             logEl.innerHTML = '';
             logEl.classList.add('show');
 
-            apiFetch('/api/admin/sign', {method: 'POST'}).then(function(resp) {
+            apiFetch('/api/admin/sign', {method: 'POST', stream: true}).then(function(resp) {
                 var reader = resp.body.getReader();
                 var decoder = new TextDecoder();
                 var buffer = '';
