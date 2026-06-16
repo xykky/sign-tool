@@ -276,7 +276,7 @@ async def sign(current_user: dict = Depends(get_current_user)):
                     yield f"data: {json.dumps({'msg': '跳过库洛账号: 未配置完整', 'type': 'skip'})}\n\n"
                     continue
 
-                yield f"data: {json.dumps({'msg': f'签到中: 库洛 {acc["uid"]} ({acc["game"]})', 'type': 'progress'})}\n\n"
+                yield f"data: {json.dumps({'msg': '签到中: 库洛 ' + acc['uid'] + ' (' + acc['game'] + ')', 'type': 'progress'})}\n\n"
                 try:
                     results = await sign_one_kuro(
                         cookie=acc["cookie"],
