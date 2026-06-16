@@ -485,9 +485,11 @@
             <!-- 用户定时管理 -->
             <div class="card">
                 <h2>用户定时管理</h2>
-                <div class="schedule-actions" style="margin-bottom: 12px;">
+                <div class="schedule-actions" style="margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
                     <input type="time" id="batch-sched-time" value="06:00">
                     <button class="btn-warning" onclick="batchUpdateSchedules()">一键统一时间</button>
+                    <button class="btn-success" onclick="batchEnableSchedules()">一键开启</button>
+                    <button class="btn-danger" onclick="batchDisableSchedules()">一键关闭</button>
                 </div>
                 <div id="admin-schedule-list">
                     <div class="empty">加载中...</div>
@@ -1370,6 +1372,37 @@
             apiFetch('/api/admin/schedules/batch', {
                 method: 'POST',
                 body: {enabled: true, time: time},
+            }).then(function(data) {
+                showMsg('admin-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadAdminSchedules();
+            }).catch(function(e) {
+                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        function batchEnableSchedules() {
+            var time = document.getElementById('batch-sched-time').value;
+            if (!time) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
+
+            if (!confirm('确定开启所有用户的定时签到？时间: ' + time)) return;
+
+            apiFetch('/api/admin/schedules/batch', {
+                method: 'POST',
+                body: {enabled: true, time: time},
+            }).then(function(data) {
+                showMsg('admin-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadAdminSchedules();
+            }).catch(function(e) {
+                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        function batchDisableSchedules() {
+            if (!confirm('确定关闭所有用户的定时签到？')) return;
+
+            apiFetch('/api/admin/schedules/batch', {
+                method: 'POST',
+                body: {enabled: false, time: '06:00'},
             }).then(function(data) {
                 showMsg('admin-schedule-msg', data.msg, data.ok);
                 if (data.ok) loadAdminSchedules();

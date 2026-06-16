@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
 import aiosqlite
 
 _db: aiosqlite.Connection | None = None
+
+_CN_TZ = timezone(timedelta(hours=8))
+
+
+def _now_cn_str() -> str:
+    """返回北京时间字符串，格式：YYYY-MM-DD HH:MM:SS"""
+    return datetime.now(_CN_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
 
 _CREATE_SQL = """
 -- 签到记录表
@@ -163,9 +171,10 @@ async def purge_before(d: str) -> int:
 async def create_user(username: str, password_hash: str, is_admin: bool = False) -> int:
     """创建用户，返回用户 ID"""
     assert _db is not None
+    now = _now_cn_str()
     async with _db.execute(
-        "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)",
-        (username, password_hash, 1 if is_admin else 0),
+        "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?)",
+        (username, password_hash, 1 if is_admin else 0, now),
     ) as cur:
         user_id = cur.lastrowid
     await _db.commit()
