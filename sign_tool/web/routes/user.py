@@ -298,7 +298,7 @@ async def sign(current_user: dict = Depends(get_current_user)):
                     yield f"data: {json.dumps({'msg': '跳过塔吉多账号: 未配置完整', 'type': 'skip'})}\n\n"
                     continue
 
-                yield f"data: {json.dumps({'msg': f'签到中: 塔吉多 {acc["center_uid"]}', 'type': 'progress'})}\n\n"
+                yield f"data: {json.dumps({'msg': '签到中: 塔吉多 ' + acc['center_uid'], 'type': 'progress'})}\n\n"
                 try:
                     results = await sign_one_tajiduo(
                         refresh_token=acc["refresh_token"],
