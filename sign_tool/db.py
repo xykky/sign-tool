@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS sign_records (
     date TEXT NOT NULL,
     user_id INTEGER,
     payload TEXT DEFAULT '{}',
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (datetime('now', '+8 hours')),
     UNIQUE(ref_id, kind, date, user_id)
 );
 CREATE INDEX IF NOT EXISTS ix_sign_records_lookup
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 );
 
 -- 用户账号表
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS user_accounts (
     refresh_token TEXT DEFAULT '',
     center_uid TEXT DEFAULT '',
     dev_code TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (datetime('now', '+8 hours')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS ix_user_accounts_user
