@@ -1,9 +1,10 @@
-"""Background scheduler for automatic sign-in."""
+"""Background scheduler for automatic sign-in (per-user schedule)."""
 
 from __future__ import annotations
 
 import asyncio
 import threading
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -20,6 +21,11 @@ def _now_cn() -> datetime:
     return datetime.now(_CN_TZ)
 
 
+def _parse_hm(time_str: str) -> tuple[int, int]:
+    parts = time_str.split(":")
+    return int(parts[0]), int(parts[1])
+
+
 def _get_next_delay(times: list[tuple[int, int]]) -> float:
     """Calculate seconds until the next scheduled time (UTC+8)."""
     now = _now_cn()
@@ -34,8 +40,8 @@ def _get_next_delay(times: list[tuple[int, int]]) -> float:
     return (24 - now.hour + h) * 3600 + (m - now.minute) * 60 - now.second
 
 
-async def _sign_all_users(config_path: str):
-    """执行所有用户的签到"""
+async def _sign_users(config_path: str, user_ids: list[int]):
+    """执行指定用户的签到"""
     from . import db
     from .kuro.sign import sign_one_kuro
     from .tajiduo.sign import sign_one_tajiduo
@@ -43,10 +49,11 @@ async def _sign_all_users(config_path: str):
     from .notify.notify import notify_sign_results
 
     config = load_config(config_path)
-    users = await db.get_all_users()
 
-    for user in users:
-        user_id = user["id"]
+    for user_id in user_ids:
+        user = await db.get_user_by_id(user_id)
+        if not user:
+            continue
         username = user["username"]
         logger.info(f"[定时] 签到用户: {username}")
 
@@ -111,83 +118,117 @@ async def _sign_all_users(config_path: str):
             except Exception as e:
                 logger.error(f"[定时]   推送通知失败: {e}")
 
-    logger.info("[定时] 全部用户签到完成")
-
 
 def _scheduler_loop(config_path: str):
-    """Run in a background thread. Reads config each loop for hot-reload."""
+    """Run in a background thread. Re-reads user schedules each loop for hot-reload."""
+    from . import db
+
     logger.info("[定时] 调度器已启动")
 
     while True:
+        # 读取所有用户的定时配置
         try:
-            config = load_config(config_path)
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(db.init_db(_get_db_path(config_path)))
+                schedules = loop.run_until_complete(db.get_all_schedules())
+            finally:
+                loop.run_until_complete(db.close_db())
+                loop.close()
         except Exception as e:
-            logger.error(f"[定时] 加载配置失败: {e}")
+            logger.error(f"[定时] 读取用户定时配置失败: {e}")
             asyncio.run(asyncio.sleep(60))
             continue
 
-        sched = config.schedule
+        # 按时间分组已启用的用户
+        time_users: dict[tuple[int, int], list[int]] = defaultdict(list)
+        for s in schedules:
+            if s["enabled"]:
+                hm = _parse_hm(s["time"])
+                time_users[hm].append(s["user_id"])
 
-        if not sched.enabled:
-            logger.info("[定时] 定时签到未启用，60秒后重新检查")
+        if not time_users:
+            logger.info("[定时] 没有用户启用定时签到，60秒后重新检查")
             asyncio.run(asyncio.sleep(60))
             continue
 
-        parts = sched.time.split(":")
-        hour, minute = int(parts[0]), int(parts[1])
-
-        times = [(hour, minute)]
-        if sched.repeat:
-            times.extend([
-                ((hour + 9) % 24, minute),
-                ((hour + 12) % 24, minute),
-                ((hour + 13) % 24, minute),
-                ((hour + 14) % 24, minute),
-            ])
-
-        delay = _get_next_delay(times)
+        # 计算所有启用的时间点
+        all_times = list(time_users.keys())
+        delay = _get_next_delay(all_times)
         if delay < 0:
             delay += 86400
 
+        # 找到即将执行的时间点
+        now = _now_cn()
+        current_hm = (now.hour, now.minute)
+        target_time = None
+        for h, m in sorted(all_times):
+            if (h, m) > current_hm:
+                target_time = (h, m)
+                break
+        if target_time is None:
+            target_time = sorted(all_times)[0]
+
         hours = int(delay // 3600)
         minutes = int((delay % 3600) // 60)
-        logger.info(f"[定时] 下次签到: {hour:02d}:{minute:02d} ({hours}小时{minutes}分钟后)")
+        logger.info(f"[定时] 下次签到: {target_time[0]:02d}:{target_time[1]:02d} ({hours}小时{minutes}分钟后)")
 
-        # Sleep in small increments so we can detect config changes
+        # Sleep in small increments so we can detect schedule changes
         slept = 0.0
+        schedule_changed = False
         while slept < delay:
             chunk = min(30.0, delay - slept)
             asyncio.run(asyncio.sleep(chunk))
             slept += chunk
 
-            # Check if config changed (re-read and compare time)
+            # Check if schedules changed (re-read and compare)
             try:
-                fresh = load_config(config_path)
-                fresh_parts = fresh.schedule.time.split(":")
-                if int(fresh_parts[0]) != hour or int(fresh_parts[1]) != minute:
-                    logger.info("[定时] 检测到配置变更，重新计算时间")
-                    break
-                if not fresh.schedule.enabled:
-                    logger.info("[定时] 定时签到已关闭")
+                loop2 = asyncio.new_event_loop()
+                try:
+                    loop2.run_until_complete(db.init_db(_get_db_path(config_path)))
+                    fresh_schedules = loop2.run_until_complete(db.get_all_schedules())
+                finally:
+                    loop2.run_until_complete(db.close_db())
+                    loop2.close()
+
+                fresh_time_users: dict[tuple[int, int], list[int]] = defaultdict(list)
+                for s in fresh_schedules:
+                    if s["enabled"]:
+                        hm = _parse_hm(s["time"])
+                        fresh_time_users[hm].append(s["user_id"])
+
+                if fresh_time_users != time_users:
+                    logger.info("[定时] 检测到定时配置变更，重新计算时间")
+                    schedule_changed = True
                     break
             except Exception:
                 pass
-        else:
-            # Full sleep completed — time to sign
-            logger.info("[定时] 开始执行签到...")
-            try:
-                from . import db
 
-                loop = asyncio.new_event_loop()
-                try:
-                    loop.run_until_complete(db.init_db(config.db_path))
-                    loop.run_until_complete(_sign_all_users(config_path))
-                    logger.info("[定时] 签到完成")
-                finally:
-                    loop.run_until_complete(db.close_db())
-                    loop.close()
-            except Exception as e:
-                logger.error(f"[定时] 签到异常: {e}")
+        if schedule_changed:
+            continue
+
+        # Full sleep completed — time to sign
+        logger.info("[定时] 开始执行签到...")
+        try:
+            sign_loop = asyncio.new_event_loop()
+            try:
+                sign_loop.run_until_complete(db.init_db(_get_db_path(config_path)))
+                # 只签到当前时间点匹配的用户
+                user_ids = time_users.get(target_time, [])
+                if user_ids:
+                    sign_loop.run_until_complete(_sign_users(config_path, user_ids))
+                logger.info("[定时] 签到完成")
+            finally:
+                sign_loop.run_until_complete(db.close_db())
+                sign_loop.close()
+        except Exception as e:
+            logger.error(f"[定时] 签到异常: {e}")
+
+
+def _get_db_path(config_path: str) -> str:
+    """Read db_path from config."""
+    config = load_config(config_path)
+    return config.db_path
 
 
 _scheduler_thread: Optional[threading.Thread] = None

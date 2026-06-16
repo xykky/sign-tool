@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
+    schedule_enabled INTEGER DEFAULT 0,
+    schedule_time TEXT DEFAULT '06:00',
     created_at TEXT DEFAULT (datetime('now', '+8 hours'))
 );
 
@@ -63,11 +65,28 @@ CREATE TABLE IF NOT EXISTS user_notify (
 );
 """
 
+_MIGRATE_SQL = [
+    ("users", "schedule_enabled", "ALTER TABLE users ADD COLUMN schedule_enabled INTEGER DEFAULT 0"),
+    ("users", "schedule_time", "ALTER TABLE users ADD COLUMN schedule_time TEXT DEFAULT '06:00'"),
+]
+
 
 async def init_db(path: str = "sign.db") -> None:
     global _db
     _db = await aiosqlite.connect(path)
     await _db.executescript(_CREATE_SQL)
+    await _db.commit()
+    await _migrate_db()
+
+
+async def _migrate_db() -> None:
+    """Add missing columns to existing tables."""
+    assert _db is not None
+    for table, column, sql in _MIGRATE_SQL:
+        try:
+            await _db.execute(sql)
+        except Exception:
+            pass  # column already exists
     await _db.commit()
 
 
@@ -207,22 +226,51 @@ async def delete_user(user_id: int) -> bool:
 # ========== 用户账号管理 ==========
 
 async def add_user_account(user_id: int, platform: str, account_data: dict) -> int:
-    """添加用户账号"""
+    """添加或更新用户账号（相同平台+uid/center_uid 时覆盖）"""
     assert _db is not None
     if platform == "kuro":
+        uid = account_data.get("uid", "")
+        # 查找是否已存在
         async with _db.execute(
-            "INSERT INTO user_accounts (user_id, platform, cookie, uid, game, did) VALUES (?, ?, ?, ?, ?, ?)",
-            (user_id, platform, account_data.get("cookie", ""), account_data.get("uid", ""),
-             account_data.get("game", "waves"), account_data.get("did", "")),
+            "SELECT id FROM user_accounts WHERE user_id=? AND platform=? AND uid=?",
+            (user_id, platform, uid),
         ) as cur:
-            account_id = cur.lastrowid
+            existing = await cur.fetchone()
+        if existing:
+            account_id = existing[0]
+            await _db.execute(
+                "UPDATE user_accounts SET cookie=?, game=?, did=? WHERE id=?",
+                (account_data.get("cookie", ""), account_data.get("game", "waves"),
+                 account_data.get("did", ""), account_id),
+            )
+        else:
+            async with _db.execute(
+                "INSERT INTO user_accounts (user_id, platform, cookie, uid, game, did) VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, platform, account_data.get("cookie", ""), uid,
+                 account_data.get("game", "waves"), account_data.get("did", "")),
+            ) as cur:
+                account_id = cur.lastrowid
     elif platform == "tajiduo":
+        center_uid = account_data.get("center_uid", "")
+        # 查找是否已存在
         async with _db.execute(
-            "INSERT INTO user_accounts (user_id, platform, refresh_token, center_uid, dev_code) VALUES (?, ?, ?, ?, ?)",
-            (user_id, platform, account_data.get("refresh_token", ""),
-             account_data.get("center_uid", ""), account_data.get("dev_code", "")),
+            "SELECT id FROM user_accounts WHERE user_id=? AND platform=? AND center_uid=?",
+            (user_id, platform, center_uid),
         ) as cur:
-            account_id = cur.lastrowid
+            existing = await cur.fetchone()
+        if existing:
+            account_id = existing[0]
+            await _db.execute(
+                "UPDATE user_accounts SET refresh_token=?, dev_code=? WHERE id=?",
+                (account_data.get("refresh_token", ""), account_data.get("dev_code", ""), account_id),
+            )
+        else:
+            async with _db.execute(
+                "INSERT INTO user_accounts (user_id, platform, refresh_token, center_uid, dev_code) VALUES (?, ?, ?, ?, ?)",
+                (user_id, platform, account_data.get("refresh_token", ""),
+                 center_uid, account_data.get("dev_code", "")),
+            ) as cur:
+                account_id = cur.lastrowid
     else:
         raise ValueError(f"不支持的平台: {platform}")
     await _db.commit()
@@ -350,3 +398,53 @@ async def update_user_account_token(user_id: int, center_uid: str, new_refresh_t
         (new_refresh_token, user_id, center_uid),
     )
     await _db.commit()
+
+
+# ========== 用户定时配置 ==========
+
+async def get_user_schedule(user_id: int) -> Optional[Dict[str, Any]]:
+    """获取用户的定时配置"""
+    assert _db is not None
+    async with _db.execute(
+        "SELECT schedule_enabled, schedule_time FROM users WHERE id=?",
+        (user_id,),
+    ) as cur:
+        row = await cur.fetchone()
+        if row:
+            return {"enabled": bool(row[0]), "time": row[1] or "06:00"}
+    return None
+
+
+async def update_user_schedule(user_id: int, enabled: bool, time: str) -> None:
+    """更新用户的定时配置"""
+    assert _db is not None
+    await _db.execute(
+        "UPDATE users SET schedule_enabled=?, schedule_time=? WHERE id=?",
+        (1 if enabled else 0, time, user_id),
+    )
+    await _db.commit()
+
+
+async def get_all_schedules() -> List[Dict[str, Any]]:
+    """获取所有用户的定时配置"""
+    assert _db is not None
+    async with _db.execute(
+        "SELECT id, username, schedule_enabled, schedule_time FROM users ORDER BY id",
+    ) as cur:
+        rows = await cur.fetchall()
+        return [
+            {"user_id": r[0], "username": r[1], "enabled": bool(r[2]), "time": r[3] or "06:00"}
+            for r in rows
+        ]
+
+
+async def update_all_schedules(enabled: bool, time: str) -> int:
+    """批量更新所有用户的定时配置，返回更新行数"""
+    assert _db is not None
+    async with _db.execute(
+        "UPDATE users SET schedule_enabled=?, schedule_time=?",
+        (1 if enabled else 0, time),
+    ) as cur:
+        updated = cur.rowcount
+    await _db.commit()
+    return updated

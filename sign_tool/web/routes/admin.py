@@ -5,12 +5,23 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 from ... import db
 from ...auth import get_admin_user
 from ...config import load_config
 
 router = APIRouter(prefix="/api/admin", tags=["管理员"])
+
+
+class ScheduleUpdateRequest(BaseModel):
+    enabled: bool
+    time: str
+
+
+class BatchScheduleRequest(BaseModel):
+    enabled: bool
+    time: str
 
 
 @router.get("/users")
@@ -228,3 +239,30 @@ async def get_all_status(date: Optional[str] = None, current_user: dict = Depend
         result[user["username"]] = {"user_id": user["id"], "records": grouped}
 
     return {"date": d, "users": result}
+
+
+# ========== 定时管理 ==========
+
+@router.get("/schedules")
+async def get_all_schedules(current_user: dict = Depends(get_admin_user)):
+    """获取所有用户的定时配置"""
+    schedules = await db.get_all_schedules()
+    return schedules
+
+
+@router.put("/schedules/{user_id}")
+async def update_user_schedule(user_id: int, req: ScheduleUpdateRequest, current_user: dict = Depends(get_admin_user)):
+    """更新指定用户的定时配置"""
+    user = await db.get_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "用户不存在"})
+
+    await db.update_user_schedule(user_id, req.enabled, req.time)
+    return {"ok": True, "msg": f"已更新 {user['username']} 的定时配置"}
+
+
+@router.post("/schedules/batch")
+async def batch_update_schedules(req: BatchScheduleRequest, current_user: dict = Depends(get_admin_user)):
+    """批量更新所有用户的定时配置"""
+    updated = await db.update_all_schedules(req.enabled, req.time)
+    return {"ok": True, "msg": f"已更新 {updated} 个用户的定时配置"}

@@ -347,3 +347,12 @@ async def status(date: Optional[str] = None, current_user: dict = Depends(get_cu
         grouped[ref].append({"kind": r["kind"], "payload": r["payload"]})
 
     return {"date": date or __import__("datetime").date.today().isoformat(), "records": grouped}
+
+
+@router.get("/schedule")
+async def get_my_schedule(current_user: dict = Depends(get_current_user)):
+    """获取当前用户的定时配置"""
+    schedule = await db.get_user_schedule(current_user["id"])
+    if not schedule:
+        return {"enabled": False, "time": "06:00"}
+    return schedule

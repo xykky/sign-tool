@@ -408,6 +408,18 @@
                 <div id="my-sign-log" class="sign-log"></div>
             </div>
 
+            <!-- 我的定时签到 -->
+            <div class="card">
+                <h2>我的定时签到</h2>
+                <div id="my-schedule-status" class="schedule-status">
+                    <span class="status-dot off"></span>
+                    <div>
+                        <div class="status-text">加载中...</div>
+                        <div class="status-detail">联系管理员修改定时配置</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 我的推送配置 -->
             <div class="card">
                 <h2>推送通知</h2>
@@ -465,6 +477,19 @@
                 </div>
             </div>
 
+            <!-- 用户定时管理 -->
+            <div class="card">
+                <h2>用户定时管理</h2>
+                <div class="schedule-actions" style="margin-bottom: 12px;">
+                    <input type="time" id="batch-sched-time" value="06:00">
+                    <button class="btn-warning" onclick="batchUpdateSchedules()">一键统一时间</button>
+                </div>
+                <div id="admin-schedule-list">
+                    <div class="empty">加载中...</div>
+                </div>
+                <div id="admin-schedule-msg" class="msg"></div>
+            </div>
+
             <!-- 执行全部签到 -->
             <div class="card">
                 <h2>执行全部签到</h2>
@@ -475,14 +500,14 @@
             </div>
         </div>
 
-        <!-- 定时配置 -->
-        <div class="card">
-            <h2>定时签到</h2>
+        <!-- 默认定时配置 (仅管理员可见) -->
+        <div id="default-schedule-card" class="card" style="display:none">
+            <h2>默认定时配置</h2>
             <div id="schedule-status" class="schedule-status">
                 <span class="status-dot off"></span>
                 <div>
                     <div class="status-text">加载中...</div>
-                    <div class="status-detail"></div>
+                    <div class="status-detail">新注册用户的默认定时配置</div>
                 </div>
             </div>
             <div class="schedule-actions">
@@ -638,10 +663,12 @@
                 document.getElementById('admin-badge').style.display = '';
                 document.getElementById('display-role').textContent = '管理员';
                 document.getElementById('admin-tabs').style.display = '';
+                document.getElementById('default-schedule-card').style.display = '';
             } else {
                 document.getElementById('admin-badge').style.display = 'none';
                 document.getElementById('display-role').textContent = '普通用户';
                 document.getElementById('admin-tabs').style.display = 'none';
+                document.getElementById('default-schedule-card').style.display = 'none';
                 document.getElementById('user-content').className = 'tab-content active';
                 document.getElementById('admin-content').className = 'tab-content';
             }
@@ -650,12 +677,14 @@
             loadMyAccounts();
             loadMyStatus();
             loadMyNotify();
-            loadConfig();
+            loadMySchedule();
 
             if (currentUser.is_admin) {
+                loadConfig();
                 loadAdminUsers();
                 loadAdminAccounts();
                 loadAdminStatus();
+                loadAdminSchedules();
             }
         }
 
@@ -1031,6 +1060,26 @@
             });
         }
 
+        // ===== 用户：我的定时签到 =====
+        function loadMySchedule() {
+            apiFetch('/api/my/schedule').then(function(data) {
+                var el = document.getElementById('my-schedule-status');
+                var dot = el.querySelector('.status-dot');
+                var textEl = el.querySelector('.status-text');
+                var detailEl = el.querySelector('.status-detail');
+
+                if (data.enabled) {
+                    dot.className = 'status-dot on';
+                    textEl.textContent = '定时签到已启用';
+                    detailEl.textContent = '每天 ' + (data.time || '06:00') + ' 自动执行签到';
+                } else {
+                    dot.className = 'status-dot off';
+                    textEl.textContent = '定时签到未启用';
+                    detailEl.textContent = '联系管理员修改定时配置';
+                }
+            }).catch(function() {});
+        }
+
         // ===== 管理员：用户管理 =====
         function loadAdminUsers() {
             apiFetch('/api/admin/users').then(function(data) {
@@ -1210,6 +1259,90 @@
             });
         }
 
+        // ===== 管理员：用户定时管理 =====
+        function loadAdminSchedules() {
+            apiFetch('/api/admin/schedules').then(function(data) {
+                var el = document.getElementById('admin-schedule-list');
+                if (data.length === 0) {
+                    el.innerHTML = '<div class="empty">暂无用户</div>';
+                    return;
+                }
+
+                var html = '<table class="user-table"><thead><tr><th>用户名</th><th>定时状态</th><th>签到时间</th><th>操作</th></tr></thead><tbody>';
+                data.forEach(function(s) {
+                    var statusLabel = s.enabled ? '<span style="color:#52c41a">已启用</span>' : '<span style="color:#999">未启用</span>';
+                    html += '<tr>' +
+                        '<td>' + escapeHtml(s.username) + '</td>' +
+                        '<td>' + statusLabel + '</td>' +
+                        '<td><input type="time" value="' + (s.time || '06:00') + '" ' +
+                            'id="sched-time-' + s.user_id + '" style="width:110px;padding:4px 8px;font-size:13px;" ' +
+                            'onchange="updateSingleSchedule(' + s.user_id + ')"></td>' +
+                        '<td>' +
+                            '<button class="btn-sm ' + (s.enabled ? 'btn-danger' : 'btn-success') + '" ' +
+                                'onclick="toggleUserSchedule(' + s.user_id + ', ' + !s.enabled + ')">' +
+                                (s.enabled ? '关闭' : '启用') + '</button>' +
+                        '</td>' +
+                    '</tr>';
+                });
+                html += '</tbody></table>';
+                el.innerHTML = html;
+            }).catch(function() {
+                document.getElementById('admin-schedule-list').innerHTML = '<div class="empty">加载失败</div>';
+            });
+        }
+
+        function updateSingleSchedule(userId) {
+            var timeInput = document.getElementById('sched-time-' + userId);
+            if (!timeInput) return;
+            var time = timeInput.value;
+
+            // 先获取当前启用状态
+            apiFetch('/api/admin/schedules').then(function(data) {
+                var user = data.find(function(s) { return s.user_id === userId; });
+                var enabled = user ? user.enabled : false;
+                return apiFetch('/api/admin/schedules/' + userId, {
+                    method: 'PUT',
+                    body: {enabled: enabled, time: time},
+                });
+            }).then(function(data) {
+                showMsg('admin-schedule-msg', data.msg, data.ok);
+            }).catch(function(e) {
+                showMsg('admin-schedule-msg', '保存失败: ' + e.message, false);
+            });
+        }
+
+        function toggleUserSchedule(userId, newEnabled) {
+            var timeInput = document.getElementById('sched-time-' + userId);
+            var time = timeInput ? timeInput.value : '06:00';
+
+            apiFetch('/api/admin/schedules/' + userId, {
+                method: 'PUT',
+                body: {enabled: newEnabled, time: time},
+            }).then(function(data) {
+                showMsg('admin-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadAdminSchedules();
+            }).catch(function(e) {
+                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        function batchUpdateSchedules() {
+            var time = document.getElementById('batch-sched-time').value;
+            if (!time) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
+
+            if (!confirm('确定将所有用户的定时签到时间设为 ' + time + ' 并启用？')) return;
+
+            apiFetch('/api/admin/schedules/batch', {
+                method: 'POST',
+                body: {enabled: true, time: time},
+            }).then(function(data) {
+                showMsg('admin-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadAdminSchedules();
+            }).catch(function(e) {
+                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
         // ===== 定时配置 =====
         function loadConfig() {
             apiFetch('/api/config').then(function(data) {
@@ -1227,15 +1360,15 @@
 
             if (enabled) {
                 dot.className = 'status-dot on';
-                textEl.textContent = '定时签到已启用';
-                detailEl.textContent = '每天 ' + (time || '06:00') + ' 自动执行签到';
-                toggleBtn.textContent = '关闭定时';
+                textEl.textContent = '默认定时已启用';
+                detailEl.textContent = '新用户注册时默认每天 ' + (time || '06:00') + ' 自动签到';
+                toggleBtn.textContent = '关闭默认定时';
                 toggleBtn.className = 'btn-danger';
             } else {
                 dot.className = 'status-dot off';
-                textEl.textContent = '定时签到未启用';
-                detailEl.textContent = '点击下方按钮开启定时签到';
-                toggleBtn.textContent = '启用定时';
+                textEl.textContent = '默认定时未启用';
+                detailEl.textContent = '新注册用户的默认定时配置';
+                toggleBtn.textContent = '启用默认定时';
                 toggleBtn.className = 'btn-warning';
             }
         }

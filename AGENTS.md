@@ -1,95 +1,73 @@
-# Sign Tool - Agent Instructions
+# AGENTS.md
 
-## Quick Start
+## Project Overview
 
-```bash
-pip install -e .
-cp config.toml.example config.toml
-sign-tool web  # http://127.0.0.1:8080
-```
+Independent sign-in tool for Kuro (鸣潮/战双) and Tajiduo (异环/幻塔) game platforms. Chinese-language UI. No dependency on gsuid_core.
 
-## Architecture
+## Tech Stack
 
-- **Entry point**: `sign_tool/cli.py:main()` → CLI command `sign-tool`
-- **Web app**: FastAPI at `sign_tool/web/app.py` (uvicorn)
-- **Platforms**: `kuro/` (库洛: 鸣潮/战双) and `tajiduo/` (塔吉多: 异环/幻塔)
-- **Config**: `config.toml` (TOML format, copy from `.example`)
-- **Database**: SQLite `sign.db`
-
-## User System
-
-- **Authentication**: JWT token (stored in localStorage)
-- **User routes**: `sign_tool/web/routes/auth.py`, `user.py`, `admin.py`
-- **Admin**: xyk/xyk666 (configurable via `ADMIN_USER`/`ADMIN_PASSWORD` env vars)
-- **User data**: Each user has independent accounts and notify config in DB
+- Python 3.8+, hatchling build
+- FastAPI + Uvicorn (async)
+- httpx, aiosqlite, pycryptodome, python-jose
+- SQLite database, TOML config
 
 ## Key Commands
 
 ```bash
-sign-tool web                           # Start web UI
-sign-tool run                           # Run all sign-ins (legacy)
-sign-tool run --platform kuro           # Only kuro (legacy)
-sign-tool login kuro --phone X --code Y # Login kuro (legacy)
-sign-tool send-code tajiduo --phone X   # Send SMS code (tajiduo only)
-sign-tool status --date 2026-06-01      # Check sign-in records
+pip install -e .                  # Install in dev mode
+sign-tool web                     # Start web UI (default 127.0.0.1:8080)
+sign-tool run                     # Execute all sign-ins
+sign-tool run --platform kuro     # Kuro only
+sign-tool run --platform tajiduo  # Tajiduo only
+sign-tool status                  # Today's sign-in records
 ```
 
-## Dependencies
+No test suite, linter, or type checker is configured.
 
-Python 3.8+. Key packages: httpx, pydantic, aiosqlite, pycryptodome, fastapi, uvicorn, python-jose, passlib
-
-## File Structure
+## Architecture
 
 ```
 sign_tool/
-├── auth.py           # JWT auth, password hashing
-├── cli.py            # CLI entry (argparse)
-├── config.py         # Config loading/saving (dataclasses)
-├── runner.py         # Sign-in executor (asyncio.gather)
-├── db.py             # SQLite (aiosqlite) - users, accounts, notify, records
-├── scheduler.py      # Background scheduler (all users)
-├── kuro/             # 库洛 platform
-├── tajiduo/          # 塔吉多 platform
-├── notify/           # Push notifications (Server酱/Telegram)
+├── cli.py          # CLI entry point (argparse, asyncio.run)
+├── config.py       # TOML config loading + CRUD, dataclasses
+├── db.py           # SQLite via aiosqlite (global connection)
+├── auth.py         # JWT auth (python-jose), password hashing
+├── runner.py       # Concurrent sign-in executor
+├── scheduler.py    # Background thread scheduler (not async)
+├── kuro/           # Kuro platform: api.py, login.py, sign.py
+├── tajiduo/        # Tajiduo platform: api.py, laohu.py, login.py, sign.py
+├── notify/         # Server酱 + Telegram push
 └── web/
-    ├── app.py        # FastAPI app + legacy routes
-    ├── routes/
-    │   ├── auth.py   # /api/auth/* (register, login, me)
-    │   ├── user.py   # /api/my/* (accounts, notify, sign, status)
-    │   └── admin.py  # /api/admin/* (users, accounts, sign, status)
-    └── static/
-        └── index.html  # Frontend with login/register UI
+    ├── app.py      # FastAPI app, startup/shutdown, legacy routes
+    └── routes/     # auth.py, user.py, admin.py (APIRouter)
 ```
 
-## API Routes
+## Critical Patterns
 
-### Auth (`/api/auth/`)
-- `POST /register` - Register new user
-- `POST /login` - Login, returns JWT token
-- `GET /me` - Get current user info
+**Dual storage**: Legacy CLI writes accounts to `config.toml`; web users stored in SQLite `user_accounts` table. The scheduler reads from DB (all users), CLI reads from config file.
 
-### User (`/api/my/`) - Requires login
-- `POST /login` - Login game account and save to user
-- `GET /accounts` - List user's game accounts
-- `DELETE /accounts/{id}` - Delete game account
-- `GET /notify` - Get user's notify config
-- `POST /notify` - Update notify config
-- `POST /notify/test` - Test notify
-- `POST /sign` - Execute user's sign-in (SSE)
-- `GET /status` - Get user's sign-in status
+**Account upsert**: `db.add_user_account()` updates existing records when same user+platform+uid/center_uid is added again (no duplicates).
 
-### Admin (`/api/admin/`) - Requires admin
-- `GET /users` - List all users
-- `DELETE /users/{id}` - Delete user
-- `GET /accounts` - List all accounts
-- `DELETE /users/{id}/accounts/{aid}` - Delete user's account
-- `POST /sign` - Execute all users' sign-in (SSE)
-- `GET /status` - Get all users' sign-in status
+**Per-user scheduling**: Each user has `schedule_enabled` and `schedule_time` columns in `users` table. The scheduler groups users by time and signs each group at their scheduled time. The global `config.toml` schedule is only used as the default for new user registration.
 
-## Notes
+**Scheduler**: Runs in a daemon thread (`scheduler.py`), not asyncio. Uses `asyncio.run()` inside thread. Re-reads user schedules from DB each loop for hot-reload. Sleeps in 30s chunks to detect schedule changes.
 
-- No test suite exists
-- Config auto-fixes corrupted TOML (line-manipulation bugs)
-- Web uses SSE for real-time sign-in progress
-- Server deploy: `sudo bash install.sh domain.com` (systemd + nginx)
-- Admin account must be set during install via `ADMIN_USER`/`ADMIN_PASSWORD` env vars (no defaults)
+**Admin user**: Created on web startup from env vars `ADMIN_USER`/`ADMIN_PASSWORD` (defaults: `admin`/`admin`). JWT secret from `JWT_SECRET_KEY` env var (hardcoded fallback).
+
+**Config auto-fix**: `config.py:_try_fix_corrupted_config()` repairs TOML files corrupted by old line-manipulation code (known issue with `[[tajiduo.accounts]]` inserted in wrong section).
+
+**SSE streaming**: Sign-in progress uses Server-Sent Events (`StreamingResponse` with `text/event-stream`).
+
+## Timezone
+
+All datetime operations use UTC+8 (Beijing time). See `scheduler.py:_CN_TZ`.
+
+## Dependencies
+
+- `tomli` for TOML reading (Python 3.8-3.10), `tomllib` (3.11+)
+- `tomli-w` for TOML writing
+- No pinned versions in lockfile
+
+## Deployment
+
+Linux systemd service + Nginx reverse proxy. Scripts: `install.sh`, `update.sh`, `uninstall.sh`. Service runs on port 2087 by default.

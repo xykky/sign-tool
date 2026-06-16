@@ -35,6 +35,11 @@ async def register(req: RegisterRequest):
     password_hash = hash_password(req.password)
     user_id = await db.create_user(req.username, password_hash, is_admin=False)
 
+    # 用默认定时配置初始化新用户
+    from ...config import load_config
+    config = load_config("config.toml")
+    await db.update_user_schedule(user_id, config.schedule.enabled, config.schedule.time)
+
     token = create_access_token({"sub": str(user_id), "username": req.username, "is_admin": False})
     return {"ok": True, "msg": "注册成功", "token": token, "username": req.username}
 
