@@ -178,6 +178,7 @@ async def sign_all(current_user: dict = Depends(get_admin_user)):
                             center_uid=acc["center_uid"],
                             dev_code=acc["dev_code"],
                             config=config,
+                            user_id=user_id,
                         )
                         user_results.append(results)
                         for line in results:

@@ -216,6 +216,7 @@ async def sign_one_tajiduo(
     center_uid: str,
     dev_code: str,
     config: Config,
+    user_id: int | None = None,
 ) -> list[str]:
     """Sign one Tajiduo account. Returns list of status messages."""
     device_id = dev_code or make_device_id()
@@ -230,9 +231,14 @@ async def sign_one_tajiduo(
     # Refresh session
     try:
         session = await client.refresh_session()
-        # Update refresh_token in config if it changed
+        # Update refresh_token if it changed
         if session.refresh_token != refresh_token:
-            update_tajiduo_refresh_token(config.config_path, center_uid, session.refresh_token)
+            if user_id:
+                # 更新数据库中的 token
+                await db.update_user_account_token(user_id, center_uid, session.refresh_token)
+            else:
+                # 兼容旧版 config.toml
+                update_tajiduo_refresh_token(config.config_path, center_uid, session.refresh_token)
             logger.debug(f"塔吉多 refresh_token 已更新")
     except TajiduoError as e:
         results.append(f"登录已过期，请重新登录 ({e.message})")

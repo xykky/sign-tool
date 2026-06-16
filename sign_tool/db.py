@@ -340,3 +340,13 @@ async def update_user_notify(user_id: int, notify_data: dict) -> None:
          notify_data.get("telegram_chat_id", "")),
     )
     await _db.commit()
+
+
+async def update_user_account_token(user_id: int, center_uid: str, new_refresh_token: str) -> None:
+    """更新用户的塔吉多 refresh_token"""
+    assert _db is not None
+    await _db.execute(
+        "UPDATE user_accounts SET refresh_token=? WHERE user_id=? AND center_uid=?",
+        (new_refresh_token, user_id, center_uid),
+    )
+    await _db.commit()

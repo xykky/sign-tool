@@ -305,6 +305,7 @@ async def sign(current_user: dict = Depends(get_current_user)):
                         center_uid=acc["center_uid"],
                         dev_code=acc["dev_code"],
                         config=config,
+                        user_id=user_id,
                     )
                     all_results.append(results)
                     for line in results:
