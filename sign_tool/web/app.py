@@ -48,11 +48,32 @@ def _reload_config(path: str) -> None:
     _config = load_config(path)
 
 
+# 注册路由
+from .routes.auth import router as auth_router
+from .routes.user import router as user_router
+from .routes.admin import router as admin_router
+
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(admin_router)
+
+
 @app.on_event("startup")
 async def startup():
     global _config
     _config = load_config("config.toml")
     await db.init_db(_config.db_path)
+
+    # 确保管理员账号存在
+    import os
+    from ..auth import hash_password
+    admin_username = os.environ.get("ADMIN_USER", "admin")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin")
+    
+    admin_user = await db.get_user_by_username(admin_username)
+    if not admin_user:
+        password_hash = hash_password(admin_password)
+        await db.create_user(admin_username, password_hash, is_admin=True)
 
     # Start background scheduler
     from ..scheduler import start_scheduler
@@ -132,7 +153,7 @@ async def kuro_send_sms(req: Request):
         return {"ok": False, "msg": f"请求失败: {e}"}
 
 
-# ===== 登录 =====
+# ===== 登录 (旧版，保留兼容) =====
 
 @app.post("/api/login")
 async def login(req: Request):
@@ -164,7 +185,7 @@ async def login(req: Request):
         return {"ok": False, "msg": f"登录失败: {e}"}
 
 
-# ===== 账号列表 =====
+# ===== 账号列表 (旧版，保留兼容) =====
 
 @app.get("/api/accounts")
 async def accounts():
@@ -190,7 +211,7 @@ async def accounts():
     return result
 
 
-# ===== 删除账号 =====
+# ===== 删除账号 (旧版，保留兼容) =====
 
 @app.delete("/api/accounts/{platform}/{index}")
 async def delete_account_api(platform: str, index: int):
@@ -203,7 +224,7 @@ async def delete_account_api(platform: str, index: int):
     return JSONResponse({"ok": False, "msg": "删除失败: 索引无效"})
 
 
-# ===== 签到状态 =====
+# ===== 签到状态 (旧版，保留兼容) =====
 
 @app.get("/api/status")
 async def status(date: str = None):
@@ -221,7 +242,7 @@ async def status(date: str = None):
     return {"date": date or __import__("datetime").date.today().isoformat(), "records": grouped}
 
 
-# ===== 执行签到 (SSE) =====
+# ===== 执行签到 (旧版，保留兼容) =====
 
 @app.post("/api/sign")
 async def sign():
@@ -315,7 +336,7 @@ async def update_config(req: Request):
     return {"ok": True, "msg": "配置已保存"}
 
 
-# ===== 推送配置 =====
+# ===== 推送配置 (旧版，保留兼容) =====
 
 @app.get("/api/notify")
 async def get_notify():

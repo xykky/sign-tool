@@ -34,6 +34,86 @@ def _get_next_delay(times: list[tuple[int, int]]) -> float:
     return (24 - now.hour + h) * 3600 + (m - now.minute) * 60 - now.second
 
 
+async def _sign_all_users(config_path: str):
+    """执行所有用户的签到"""
+    from . import db
+    from .kuro.sign import sign_one_kuro
+    from .tajiduo.sign import sign_one_tajiduo
+    from .config import NotifyConfig, ServerChanConfig, TelegramConfig
+    from .notify.notify import notify_sign_results
+
+    config = load_config(config_path)
+    users = await db.get_all_users()
+
+    for user in users:
+        user_id = user["id"]
+        username = user["username"]
+        logger.info(f"[定时] 签到用户: {username}")
+
+        accounts = await db.get_user_accounts(user_id)
+        if not accounts:
+            logger.info(f"[定时]   用户 {username} 没有配置账号")
+            continue
+
+        user_results = []
+
+        for acc in accounts:
+            if acc["platform"] == "kuro":
+                if not acc["cookie"] or not acc["uid"]:
+                    logger.warning(f"[定时]   跳过库洛账号: 未配置完整")
+                    continue
+
+                try:
+                    results = await sign_one_kuro(
+                        cookie=acc["cookie"],
+                        uid=acc["uid"],
+                        game=acc["game"],
+                        did=acc["did"],
+                        bbs_enabled=config.kuro_bbs.enabled,
+                    )
+                    user_results.append(results)
+                    for line in results:
+                        logger.info(f"[定时]   {line}")
+                except Exception as e:
+                    logger.error(f"[定时]   库洛签到异常: {e}")
+                    user_results.append([f"[库洛] 签到异常: {e}"])
+
+            elif acc["platform"] == "tajiduo":
+                if not acc["refresh_token"] or not acc["center_uid"]:
+                    logger.warning(f"[定时]   跳过塔吉多账号: 未配置完整")
+                    continue
+
+                try:
+                    results = await sign_one_tajiduo(
+                        refresh_token=acc["refresh_token"],
+                        center_uid=acc["center_uid"],
+                        dev_code=acc["dev_code"],
+                        config=config,
+                    )
+                    user_results.append(results)
+                    for line in results:
+                        logger.info(f"[定时]   {line}")
+                except Exception as e:
+                    logger.error(f"[定时]   塔吉多签到异常: {e}")
+                    user_results.append([f"[塔吉多] 签到异常: {e}"])
+
+        # 发送用户推送通知
+        notify_config = await db.get_user_notify(user_id)
+        if notify_config and notify_config["enabled"] and user_results:
+            try:
+                user_notify = NotifyConfig(
+                    enabled=True,
+                    serverchan=ServerChanConfig(sckey=notify_config["serverchan_sckey"]),
+                    telegram=TelegramConfig(bot_token=notify_config["telegram_bot_token"], chat_id=notify_config["telegram_chat_id"]),
+                )
+                await notify_sign_results(user_notify, user_results)
+                logger.info(f"[定时]   推送通知已发送")
+            except Exception as e:
+                logger.error(f"[定时]   推送通知失败: {e}")
+
+    logger.info("[定时] 全部用户签到完成")
+
+
 def _scheduler_loop(config_path: str):
     """Run in a background thread. Reads config each loop for hot-reload."""
     logger.info("[定时] 调度器已启动")
@@ -101,8 +181,7 @@ def _scheduler_loop(config_path: str):
                 loop = asyncio.new_event_loop()
                 try:
                     loop.run_until_complete(db.init_db(config.db_path))
-                    from .runner import run_all_with_notify
-                    loop.run_until_complete(run_all_with_notify(config, platform=None))
+                    loop.run_until_complete(_sign_all_users(config_path))
                     logger.info("[定时] 签到完成")
                 finally:
                     loop.run_until_complete(db.close_db())

@@ -17,9 +17,20 @@ echo "=========================================="
 echo "  Sign Tool 一键部署"
 echo "=========================================="
 echo ""
+
+# 管理员账号配置
+echo "  请设置管理员账号:"
+read -p "  用户名 (默认 admin): " ADMIN_USER
+ADMIN_USER="${ADMIN_USER:-admin}"
+read -s -p "  密码 (默认 admin): " ADMIN_PASS
+ADMIN_PASS="${ADMIN_PASS:-admin}"
+echo ""
+echo ""
+
 echo "  安装目录: $SCRIPT_DIR"
 echo "  后端端口: $PORT"
 echo "  域名: $([ "$DOMAIN" = "_" ] && echo "(未指定，使用IP访问)" || echo "$DOMAIN")"
+echo "  管理员: $ADMIN_USER"
 echo ""
 
 # 1. 安装系统依赖
@@ -66,6 +77,8 @@ ExecStart=$SCRIPT_DIR/.venv/bin/python -m sign_tool web --host 127.0.0.1 --port 
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=ADMIN_USER=$ADMIN_USER
+Environment=ADMIN_PASSWORD=$ADMIN_PASS
 
 [Install]
 WantedBy=multi-user.target

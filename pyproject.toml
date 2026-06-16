@@ -16,6 +16,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "tomli-w>=1.0",
+    "python-jose[cryptography]>=3.3",
 ]
 
 [project.scripts]
