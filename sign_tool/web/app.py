@@ -311,31 +311,6 @@ async def sign():
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-# ===== 定时配置 =====
-
-@app.get("/api/config")
-async def get_config():
-    config = _get_config()
-    sched = config.schedule
-    return {"time": sched.time, "repeat": sched.repeat, "enabled": sched.enabled}
-
-
-@app.post("/api/config")
-async def update_config(req: Request):
-    body = await req.json()
-    time = body.get("time", "06:00")
-    repeat = body.get("repeat", False)
-    enabled = body.get("enabled", True)
-
-    config = _get_config()
-    update_schedule_config(config.config_path, time, repeat, enabled)
-
-    global _config
-    _config = load_config(config.config_path)
-
-    return {"ok": True, "msg": "配置已保存"}
-
-
 # ===== 推送配置 (旧版，保留兼容) =====
 
 @app.get("/api/notify")

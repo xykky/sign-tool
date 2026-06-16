@@ -24,6 +24,13 @@ class BatchScheduleRequest(BaseModel):
     time: str
 
 
+class NotifyUpdateRequest(BaseModel):
+    enabled: bool
+    serverchan_sckey: Optional[str] = ""
+    telegram_bot_token: Optional[str] = ""
+    telegram_chat_id: Optional[str] = ""
+
+
 @router.get("/users")
 async def get_users(current_user: dict = Depends(get_admin_user)):
     """获取所有用户"""
@@ -99,6 +106,23 @@ async def get_user_notify(user_id: int, current_user: dict = Depends(get_admin_u
     if not notify:
         return {"enabled": False, "serverchan_sckey": "", "telegram_bot_token": "", "telegram_chat_id": ""}
     return notify
+
+
+@router.put("/users/{user_id}/notify")
+async def update_user_notify(user_id: int, req: NotifyUpdateRequest, current_user: dict = Depends(get_admin_user)):
+    """更新指定用户的推送配置"""
+    user = await db.get_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "用户不存在"})
+
+    notify_data = {
+        "enabled": req.enabled,
+        "serverchan_sckey": req.serverchan_sckey or "",
+        "telegram_bot_token": req.telegram_bot_token or "",
+        "telegram_chat_id": req.telegram_chat_id or "",
+    }
+    await db.update_user_notify(user_id, notify_data)
+    return {"ok": True, "msg": f"已更新 {user['username']} 的推送配置"}
 
 
 @router.get("/accounts")

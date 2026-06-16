@@ -41,6 +41,11 @@ class NotifyRequest(BaseModel):
     telegram_chat_id: Optional[str] = None
 
 
+class ScheduleRequest(BaseModel):
+    enabled: bool
+    time: str
+
+
 # ========== 账号管理 ==========
 
 @router.post("/login")
@@ -356,3 +361,12 @@ async def get_my_schedule(current_user: dict = Depends(get_current_user)):
     if not schedule:
         return {"enabled": False, "time": "06:00"}
     return schedule
+
+
+@router.put("/schedule")
+async def update_my_schedule(req: ScheduleRequest, current_user: dict = Depends(get_current_user)):
+    """更新当前用户的定时配置"""
+    if not req.time or ":" not in req.time:
+        return JSONResponse({"ok": False, "msg": "时间格式不正确"})
+    await db.update_user_schedule(current_user["id"], req.enabled, req.time)
+    return {"ok": True, "msg": "定时配置已保存"}

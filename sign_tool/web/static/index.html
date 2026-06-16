@@ -415,9 +415,14 @@
                     <span class="status-dot off"></span>
                     <div>
                         <div class="status-text">加载中...</div>
-                        <div class="status-detail">联系管理员修改定时配置</div>
+                        <div class="status-detail">定时签到设置</div>
                     </div>
                 </div>
+                <div class="schedule-actions">
+                    <input type="time" id="my-sched-time" value="06:00" onchange="saveMySchedule()">
+                    <button class="btn-warning" onclick="toggleMySchedule()" id="btn-toggle-my-sched">启用定时</button>
+                </div>
+                <div id="my-schedule-msg" class="msg"></div>
             </div>
 
             <!-- 我的推送配置 -->
@@ -490,6 +495,15 @@
                 <div id="admin-schedule-msg" class="msg"></div>
             </div>
 
+            <!-- 用户推送管理 -->
+            <div class="card">
+                <h2>用户推送管理</h2>
+                <div id="admin-notify-list">
+                    <div class="empty">加载中...</div>
+                </div>
+                <div id="admin-notify-msg" class="msg"></div>
+            </div>
+
             <!-- 执行全部签到 -->
             <div class="card">
                 <h2>执行全部签到</h2>
@@ -498,23 +512,6 @@
                 </div>
                 <div id="admin-sign-log" class="sign-log"></div>
             </div>
-        </div>
-
-        <!-- 默认定时配置 (仅管理员可见) -->
-        <div id="default-schedule-card" class="card" style="display:none">
-            <h2>默认定时配置</h2>
-            <div id="schedule-status" class="schedule-status">
-                <span class="status-dot off"></span>
-                <div>
-                    <div class="status-text">加载中...</div>
-                    <div class="status-detail">新注册用户的默认定时配置</div>
-                </div>
-            </div>
-            <div class="schedule-actions">
-                <input type="time" id="sched-time" value="06:00" onchange="onTimeChange()">
-                <button class="btn-warning" onclick="toggleSchedule()" id="btn-toggle-sched">启用定时</button>
-            </div>
-            <div id="config-msg" class="msg"></div>
         </div>
 
         <!-- 更新 -->
@@ -663,12 +660,10 @@
                 document.getElementById('admin-badge').style.display = '';
                 document.getElementById('display-role').textContent = '管理员';
                 document.getElementById('admin-tabs').style.display = '';
-                document.getElementById('default-schedule-card').style.display = '';
             } else {
                 document.getElementById('admin-badge').style.display = 'none';
                 document.getElementById('display-role').textContent = '普通用户';
                 document.getElementById('admin-tabs').style.display = 'none';
-                document.getElementById('default-schedule-card').style.display = 'none';
                 document.getElementById('user-content').className = 'tab-content active';
                 document.getElementById('admin-content').className = 'tab-content';
             }
@@ -680,11 +675,11 @@
             loadMySchedule();
 
             if (currentUser.is_admin) {
-                loadConfig();
                 loadAdminUsers();
                 loadAdminAccounts();
                 loadAdminStatus();
                 loadAdminSchedules();
+                loadAdminNotify();
             }
         }
 
@@ -1063,21 +1058,61 @@
         // ===== 用户：我的定时签到 =====
         function loadMySchedule() {
             apiFetch('/api/my/schedule').then(function(data) {
-                var el = document.getElementById('my-schedule-status');
-                var dot = el.querySelector('.status-dot');
-                var textEl = el.querySelector('.status-text');
-                var detailEl = el.querySelector('.status-detail');
-
-                if (data.enabled) {
-                    dot.className = 'status-dot on';
-                    textEl.textContent = '定时签到已启用';
-                    detailEl.textContent = '每天 ' + (data.time || '06:00') + ' 自动执行签到';
-                } else {
-                    dot.className = 'status-dot off';
-                    textEl.textContent = '定时签到未启用';
-                    detailEl.textContent = '联系管理员修改定时配置';
-                }
+                document.getElementById('my-sched-time').value = data.time || '06:00';
+                updateMyScheduleStatus(data.enabled, data.time);
             }).catch(function() {});
+        }
+
+        function updateMyScheduleStatus(enabled, time) {
+            var statusEl = document.getElementById('my-schedule-status');
+            var toggleBtn = document.getElementById('btn-toggle-my-sched');
+            var dot = statusEl.querySelector('.status-dot');
+            var textEl = statusEl.querySelector('.status-text');
+            var detailEl = statusEl.querySelector('.status-detail');
+
+            if (enabled) {
+                dot.className = 'status-dot on';
+                textEl.textContent = '定时签到已启用';
+                detailEl.textContent = '每天 ' + (time || '06:00') + ' 自动执行签到';
+                toggleBtn.textContent = '关闭定时';
+                toggleBtn.className = 'btn-danger';
+            } else {
+                dot.className = 'status-dot off';
+                textEl.textContent = '定时签到未启用';
+                detailEl.textContent = '点击下方按钮开启定时签到';
+                toggleBtn.textContent = '启用定时';
+                toggleBtn.className = 'btn-warning';
+            }
+        }
+
+        function toggleMySchedule() {
+            apiFetch('/api/my/schedule').then(function(data) {
+                var time = document.getElementById('my-sched-time').value || data.time;
+                return apiFetch('/api/my/schedule', {
+                    method: 'PUT',
+                    body: {enabled: !data.enabled, time: time},
+                });
+            }).then(function(data) {
+                showMsg('my-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadMySchedule();
+            }).catch(function(e) {
+                showMsg('my-schedule-msg', '操作失败: ' + e.message, false);
+            });
+        }
+
+        function saveMySchedule() {
+            var time = document.getElementById('my-sched-time').value;
+            apiFetch('/api/my/schedule').then(function(data) {
+                return apiFetch('/api/my/schedule', {
+                    method: 'PUT',
+                    body: {enabled: data.enabled, time: time},
+                });
+            }).then(function(data) {
+                showMsg('my-schedule-msg', data.msg, data.ok);
+                if (data.ok) loadMySchedule();
+            }).catch(function(e) {
+                showMsg('my-schedule-msg', '保存失败: ' + e.message, false);
+            });
         }
 
         // ===== 管理员：用户管理 =====
@@ -1343,64 +1378,60 @@
             });
         }
 
-        // ===== 定时配置 =====
-        function loadConfig() {
-            apiFetch('/api/config').then(function(data) {
-                document.getElementById('sched-time').value = data.time || '06:00';
-                updateScheduleStatus(data.enabled, data.time);
-            }).catch(function() {});
-        }
+        // ===== 管理员：用户推送管理 =====
+        function loadAdminNotify() {
+            apiFetch('/api/admin/users').then(function(users) {
+                var el = document.getElementById('admin-notify-list');
+                if (users.length === 0) {
+                    el.innerHTML = '<div class="empty">暂无用户</div>';
+                    return;
+                }
 
-        function updateScheduleStatus(enabled, time) {
-            var statusEl = document.getElementById('schedule-status');
-            var toggleBtn = document.getElementById('btn-toggle-sched');
-            var dot = statusEl.querySelector('.status-dot');
-            var textEl = statusEl.querySelector('.status-text');
-            var detailEl = statusEl.querySelector('.status-detail');
-
-            if (enabled) {
-                dot.className = 'status-dot on';
-                textEl.textContent = '默认定时已启用';
-                detailEl.textContent = '新用户注册时默认每天 ' + (time || '06:00') + ' 自动签到';
-                toggleBtn.textContent = '关闭默认定时';
-                toggleBtn.className = 'btn-danger';
-            } else {
-                dot.className = 'status-dot off';
-                textEl.textContent = '默认定时未启用';
-                detailEl.textContent = '新注册用户的默认定时配置';
-                toggleBtn.textContent = '启用默认定时';
-                toggleBtn.className = 'btn-warning';
-            }
-        }
-
-        function onTimeChange() {
-            var time = document.getElementById('sched-time').value;
-            apiFetch('/api/config').then(function(data) {
-                return apiFetch('/api/config', {
-                    method: 'POST',
-                    body: {time: time, repeat: false, enabled: data.enabled},
+                var html = '<table class="user-table"><thead><tr><th>用户名</th><th>推送状态</th><th>操作</th></tr></thead><tbody>';
+                users.forEach(function(user) {
+                    html += '<tr>' +
+                        '<td>' + escapeHtml(user.username) + '</td>' +
+                        '<td id="notify-status-' + user.id + '">加载中...</td>' +
+                        '<td>' +
+                            '<button class="btn-sm btn-outline" onclick="showNotifyEdit(' + user.id + ', \'' + escapeHtml(user.username) + '\')">编辑</button>' +
+                        '</td>' +
+                    '</tr>';
                 });
-            }).then(function(data) {
-                showMsg('config-msg', data.msg, data.ok);
-                if (data.ok) loadConfig();
-            }).catch(function(e) {
-                showMsg('config-msg', '保存失败: ' + e.message, false);
+                html += '</tbody></table>';
+                el.innerHTML = html;
+
+                // 加载每个用户的推送状态
+                users.forEach(function(user) {
+                    apiFetch('/api/admin/users/' + user.id + '/notify').then(function(data) {
+                        var statusEl = document.getElementById('notify-status-' + user.id);
+                        if (statusEl) {
+                            var services = [];
+                            if (data.serverchan_sckey) services.push('Server酱');
+                            if (data.telegram_bot_token) services.push('Telegram');
+                            statusEl.innerHTML = data.enabled ?
+                                '<span style="color:#52c41a">已启用</span>' + (services.length ? ' (' + services.join('+') + ')' : '') :
+                                '<span style="color:#999">未启用</span>';
+                        }
+                    });
+                });
+            }).catch(function() {
+                document.getElementById('admin-notify-list').innerHTML = '<div class="empty">加载失败</div>';
             });
         }
 
-        function toggleSchedule() {
-            apiFetch('/api/config').then(function(data) {
-                var newEnabled = !data.enabled;
-                var time = document.getElementById('sched-time').value || data.time;
-                return apiFetch('/api/config', {
-                    method: 'POST',
-                    body: {time: time, repeat: false, enabled: newEnabled},
-                });
-            }).then(function(data) {
-                showMsg('config-msg', data.msg, data.ok);
-                if (data.ok) loadConfig();
-            }).catch(function(e) {
-                showMsg('config-msg', '操作失败: ' + e.message, false);
+        function showNotifyEdit(userId, username) {
+            apiFetch('/api/admin/users/' + userId + '/notify').then(function(data) {
+                var sckey = data.serverchan_sckey || '';
+                var tgToken = data.telegram_bot_token || '';
+                var tgChat = data.telegram_chat_id || '';
+
+                var msg = '编辑「' + username + '」的推送配置\n\n' +
+                    '当前状态: ' + (data.enabled ? '已启用' : '未启用') + '\n' +
+                    'Server酱 SCKEY: ' + (sckey ? sckey.substring(0, 8) + '...' : '(空)') + '\n' +
+                    'Telegram Token: ' + (tgToken ? tgToken.substring(0, 8) + '...' : '(空)') + '\n' +
+                    'Telegram Chat ID: ' + (tgChat || '(空)');
+
+                alert(msg);
             });
         }
 
