@@ -220,10 +220,21 @@ def _scheduler_loop(config_path: str):
             user_ids = time_users.get(target_time, [])
             if user_ids:
                 async def _run_sign():
-                    from . import db
+                    import aiosqlite
+                    from . import db as db_mod
                     config = load_config(config_path)
-                    await db.init_db(config.db_path)
-                    await _sign_users(config_path, user_ids)
+                    # 在当前事件循环创建独立连接
+                    local_conn = await aiosqlite.connect(config.db_path)
+                    await local_conn.executescript(db_mod._CREATE_SQL)
+                    await local_conn.commit()
+                    # 临时替换全局连接，用完恢复
+                    old_db = db_mod._db
+                    db_mod._db = local_conn
+                    try:
+                        await _sign_users(config_path, user_ids)
+                    finally:
+                        db_mod._db = old_db
+                        await local_conn.close()
                 asyncio.run(_run_sign())
             logger.info("[定时] 签到完成")
         except Exception as e:
