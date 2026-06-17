@@ -120,15 +120,34 @@ async def _sign_users(config_path: str, user_ids: list[int]):
 
 
 def _scheduler_loop(config_path: str):
-    """Run in a background thread. Re-reads user schedules each loop for hot-reload."""
+    """Run in a background thread. Uses its own DB connection per iteration."""
     from . import db
 
     logger.info("[定时] 调度器已启动")
 
-    while True:
-        # 读取所有用户的定时配置（复用 Web 应用已建立的全局连接）
+    async def _read_schedules():
+        """用独立连接读取定时配置"""
+        import aiosqlite
+        config = load_config(config_path)
+        conn = await aiosqlite.connect(config.db_path)
         try:
-            schedules = asyncio.run(db.get_all_schedules())
+            await conn.executescript(db._CREATE_SQL)
+            await conn.commit()
+            async with conn.execute(
+                "SELECT id, username, schedule_enabled, schedule_time FROM users ORDER BY id",
+            ) as cur:
+                rows = await cur.fetchall()
+                return [
+                    {"user_id": r[0], "username": r[1], "enabled": bool(r[2]), "time": r[3] or "06:00"}
+                    for r in rows
+                ]
+        finally:
+            await conn.close()
+
+    while True:
+        # 读取所有用户的定时配置
+        try:
+            schedules = asyncio.run(_read_schedules())
         except Exception as e:
             logger.error(f"[定时] 读取用户定时配置失败: {e}")
             asyncio.run(asyncio.sleep(60))
@@ -177,7 +196,7 @@ def _scheduler_loop(config_path: str):
 
             # Check if schedules changed (re-read and compare)
             try:
-                fresh_schedules = asyncio.run(db.get_all_schedules())
+                fresh_schedules = asyncio.run(_read_schedules())
 
                 fresh_time_users: dict[tuple[int, int], list[int]] = defaultdict(list)
                 for s in fresh_schedules:
@@ -200,7 +219,12 @@ def _scheduler_loop(config_path: str):
         try:
             user_ids = time_users.get(target_time, [])
             if user_ids:
-                asyncio.run(_sign_users(config_path, user_ids))
+                async def _run_sign():
+                    from . import db
+                    config = load_config(config_path)
+                    await db.init_db(config.db_path)
+                    await _sign_users(config_path, user_ids)
+                asyncio.run(_run_sign())
             logger.info("[定时] 签到完成")
         except Exception as e:
             logger.error(f"[定时] 签到异常: {e}")
