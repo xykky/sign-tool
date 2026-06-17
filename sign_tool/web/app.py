@@ -239,7 +239,7 @@ async def status(date: str = None):
             grouped[ref] = []
         grouped[ref].append({"kind": r["kind"], "payload": r["payload"]})
 
-    return {"date": date or __import__("datetime").date.today().isoformat(), "records": grouped}
+    return {"date": date or db._today_cn(), "records": grouped}
 
 
 # ===== 执行签到 (旧版，保留兼容) =====

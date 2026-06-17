@@ -16,6 +16,11 @@ def _now_cn_str() -> str:
     return datetime.now(_CN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _today_cn() -> str:
+    """返回北京时间的日期字符串，格式：YYYY-MM-DD"""
+    return datetime.now(_CN_TZ).strftime("%Y-%m-%d")
+
+
 _CREATE_SQL = """
 -- 签到记录表
 CREATE TABLE IF NOT EXISTS sign_records (
@@ -112,7 +117,7 @@ async def close_db() -> None:
 async def is_signed(ref_id: str, kind: str, d: str | None = None, user_id: int | None = None) -> bool:
     assert _db is not None
     if d is None:
-        d = date.today().isoformat()
+        d = _today_cn()
     if user_id is not None:
         async with _db.execute(
             "SELECT 1 FROM sign_records WHERE ref_id=? AND kind=? AND date=? AND user_id=?",
@@ -130,7 +135,7 @@ async def is_signed(ref_id: str, kind: str, d: str | None = None, user_id: int |
 async def record_sign(ref_id: str, kind: str, payload: dict | None = None, d: str | None = None, user_id: int | None = None) -> None:
     assert _db is not None
     if d is None:
-        d = date.today().isoformat()
+        d = _today_cn()
     await _db.execute(
         "INSERT OR IGNORE INTO sign_records (ref_id, kind, date, user_id, payload) VALUES (?, ?, ?, ?, ?)",
         (ref_id, kind, d, user_id, json.dumps(payload or {}, ensure_ascii=False)),
@@ -141,7 +146,7 @@ async def record_sign(ref_id: str, kind: str, payload: dict | None = None, d: st
 async def get_today_records(d: str | None = None, user_id: int | None = None) -> list[dict]:
     assert _db is not None
     if d is None:
-        d = date.today().isoformat()
+        d = _today_cn()
     if user_id is not None:
         async with _db.execute(
             "SELECT ref_id, kind, payload FROM sign_records WHERE date=? AND user_id=? ORDER BY ref_id, kind",

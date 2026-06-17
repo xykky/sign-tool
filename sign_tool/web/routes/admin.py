@@ -246,8 +246,7 @@ async def sign_all(current_user: dict = Depends(get_admin_user)):
 @router.get("/status")
 async def get_all_status(date: Optional[str] = None, current_user: dict = Depends(get_admin_user)):
     """查看所有用户的签到状态"""
-    from datetime import date as dt_date
-    d = date or dt_date.today().isoformat()
+    d = date or db._today_cn()
 
     users = await db.get_all_users()
     result = {}
