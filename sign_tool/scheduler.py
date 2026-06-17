@@ -133,6 +133,13 @@ def _scheduler_loop(config_path: str):
         try:
             await conn.executescript(db._CREATE_SQL)
             await conn.commit()
+            # 执行 migration，确保 schedule_enabled / schedule_time 列存在
+            for _table, _column, sql in db._MIGRATE_SQL:
+                try:
+                    await conn.execute(sql)
+                except Exception:
+                    pass
+            await conn.commit()
             async with conn.execute(
                 "SELECT id, username, schedule_enabled, schedule_time FROM users ORDER BY id",
             ) as cur:
@@ -148,6 +155,9 @@ def _scheduler_loop(config_path: str):
         # 读取所有用户的定时配置
         try:
             schedules = asyncio.run(_read_schedules())
+            logger.info(f"[定时] 读取到 {len(schedules)} 个用户配置")
+            for s in schedules:
+                logger.info(f"[定时]   用户 {s['username']}: enabled={s['enabled']}, time={s['time']}")
         except Exception as e:
             logger.error(f"[定时] 读取用户定时配置失败: {e}")
             asyncio.run(asyncio.sleep(60))
@@ -215,9 +225,10 @@ def _scheduler_loop(config_path: str):
             continue
 
         # Full sleep completed — time to sign
-        logger.info("[定时] 开始执行签到...")
+        logger.info(f"[定时] 开始执行签到... 目标时间: {target_time[0]:02d}:{target_time[1]:02d}")
         try:
             user_ids = time_users.get(target_time, [])
+            logger.info(f"[定时] 待签到用户 ID: {user_ids}")
             if user_ids:
                 async def _run_sign():
                     import aiosqlite
