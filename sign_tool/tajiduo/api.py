@@ -164,9 +164,12 @@ class TajiduoClient:
                 data=body,
             )
             if resp.status_code >= 400:
-                raise TajiduoError(f"HTTP {resp.status_code}: {path}", {"status_code": resp.status_code})
+                raise TajiduoError(
+                    f"HTTP {resp.status_code}: {path}",
+                    {"status_code": resp.status_code, "text": resp.text},
+                )
             if not resp.content:
-                raise TajiduoError(f"响应为空: {path}")
+                raise TajiduoError(f"响应为空: {path}", {"status_code": resp.status_code, "text": resp.text})
             payload = resp.json()
 
         if not isinstance(payload, dict):

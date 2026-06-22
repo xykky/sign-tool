@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 import asyncio
+from datetime import datetime, timezone, timedelta
 
 from ..log import get_logger
 from .. import db
@@ -21,6 +22,11 @@ from .constants import (
 )
 
 logger = get_logger()
+
+_CN_TZ = timezone(timedelta(hours=8))
+
+# access_token 本地缓存 TTL（参考 NTEUID，保守设为 1 小时）
+ACCESS_TOKEN_TTL_SECONDS: int = 3600
 
 TASK_LABELS = {
     "browse_post_c": "浏览帖子",
@@ -211,14 +217,34 @@ async def _daily_tasks(
     return results
 
 
+def _access_token_fresh(access_token_updated_at: str) -> bool:
+    """检查缓存的 access_token 是否在 TTL 内"""
+    if not access_token_updated_at:
+        return False
+    try:
+        at = datetime.strptime(access_token_updated_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=_CN_TZ)
+        age = (datetime.now(_CN_TZ) - at).total_seconds()
+        return age < ACCESS_TOKEN_TTL_SECONDS
+    except ValueError:
+        return False
+
+
 async def sign_one_tajiduo(
     refresh_token: str,
     center_uid: str,
     dev_code: str,
     config: Config,
     user_id: int | None = None,
+    access_token: str = "",
+    access_token_updated_at: str = "",
 ) -> list[str]:
-    """Sign one Tajiduo account. Returns list of status messages."""
+    """Sign one Tajiduo account. Returns list of status messages.
+
+    参考 NTEUID 的 session 管理策略：
+    - 如果 access_token 在 TTL 内，直接复用，跳过 refresh 请求
+    - 只在 access_token 过期时才调用 refresh_session
+    - 减少了 refresh 接口调用次数，降低 402 风险
+    """
     device_id = dev_code or make_device_id()
     client = TajiduoClient(
         device_id=device_id,
@@ -228,21 +254,26 @@ async def sign_one_tajiduo(
 
     results = [f"[塔吉多 {center_uid}]"]
 
-    # Refresh session
-    try:
-        session = await client.refresh_session()
-        # Update refresh_token if it changed
-        if session.refresh_token != refresh_token:
-            if user_id:
-                # 更新数据库中的 token
-                await db.update_user_account_token(user_id, center_uid, session.refresh_token)
-            else:
-                # 兼容旧版 config.toml
-                update_tajiduo_refresh_token(config.config_path, center_uid, session.refresh_token)
-            logger.debug(f"塔吉多 refresh_token 已更新")
-    except TajiduoError as e:
-        results.append(f"登录已过期，请重新登录 ({e.message})")
-        return results
+    # 检查缓存的 access_token 是否仍有效
+    if access_token and _access_token_fresh(access_token_updated_at):
+        client.access_token = access_token
+        logger.debug(f"塔吉多 access_token 缓存命中，跳过 refresh")
+    else:
+        # Refresh session
+        try:
+            session = await client.refresh_session()
+            # Update tokens if they changed
+            if session.refresh_token != refresh_token or session.access_token != access_token:
+                if user_id:
+                    await db.update_user_account_token(
+                        user_id, center_uid, session.refresh_token, session.access_token,
+                    )
+                else:
+                    update_tajiduo_refresh_token(config.config_path, center_uid, session.refresh_token)
+                logger.debug(f"塔吉多 token 已刷新")
+        except TajiduoError as e:
+            results.append(f"登录已过期，请重新登录 ({e.message})")
+            return results
 
     # App sign
     results.append(await _app_sign(client, center_uid))

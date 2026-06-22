@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS user_notify (
 _MIGRATE_SQL = [
     ("users", "schedule_enabled", "ALTER TABLE users ADD COLUMN schedule_enabled INTEGER DEFAULT 0"),
     ("users", "schedule_time", "ALTER TABLE users ADD COLUMN schedule_time TEXT DEFAULT '06:00'"),
+    ("user_accounts", "access_token", "ALTER TABLE user_accounts ADD COLUMN access_token TEXT DEFAULT ''"),
+    ("user_accounts", "access_token_updated_at", "ALTER TABLE user_accounts ADD COLUMN access_token_updated_at TEXT DEFAULT ''"),
 ]
 
 
@@ -277,14 +279,16 @@ async def add_user_account(user_id: int, platform: str, account_data: dict) -> i
         if existing:
             account_id = existing[0]
             await _db.execute(
-                "UPDATE user_accounts SET refresh_token=?, dev_code=? WHERE id=?",
-                (account_data.get("refresh_token", ""), account_data.get("dev_code", ""), account_id),
+                "UPDATE user_accounts SET refresh_token=?, dev_code=?, access_token=?, access_token_updated_at=? WHERE id=?",
+                (account_data.get("refresh_token", ""), account_data.get("dev_code", ""),
+                 account_data.get("access_token", ""), account_data.get("access_token_updated_at", ""), account_id),
             )
         else:
             async with _db.execute(
-                "INSERT INTO user_accounts (user_id, platform, refresh_token, center_uid, dev_code) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO user_accounts (user_id, platform, refresh_token, center_uid, dev_code, access_token, access_token_updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (user_id, platform, account_data.get("refresh_token", ""),
-                 center_uid, account_data.get("dev_code", "")),
+                 center_uid, account_data.get("dev_code", ""),
+                 account_data.get("access_token", ""), account_data.get("access_token_updated_at", "")),
             ) as cur:
                 account_id = cur.lastrowid
     else:
@@ -297,7 +301,7 @@ async def get_user_accounts(user_id: int) -> List[Dict[str, Any]]:
     """获取用户的所有账号"""
     assert _db is not None
     async with _db.execute(
-        "SELECT id, platform, cookie, uid, game, did, refresh_token, center_uid, dev_code FROM user_accounts WHERE user_id=?",
+        "SELECT id, platform, cookie, uid, game, did, refresh_token, center_uid, dev_code, access_token, access_token_updated_at FROM user_accounts WHERE user_id=?",
         (user_id,),
     ) as cur:
         rows = await cur.fetchall()
@@ -312,6 +316,7 @@ async def get_user_accounts(user_id: int) -> List[Dict[str, Any]]:
                 accounts.append({
                     "id": r[0], "platform": r[1], "refresh_token": r[6],
                     "center_uid": r[7], "dev_code": r[8],
+                    "access_token": r[9] or "", "access_token_updated_at": r[10] or "",
                 })
         return accounts
 
@@ -320,7 +325,7 @@ async def get_user_account_by_id(account_id: int) -> Optional[Dict[str, Any]]:
     """根据账号 ID 获取账号"""
     assert _db is not None
     async with _db.execute(
-        "SELECT id, user_id, platform, cookie, uid, game, did, refresh_token, center_uid, dev_code FROM user_accounts WHERE id=?",
+        "SELECT id, user_id, platform, cookie, uid, game, did, refresh_token, center_uid, dev_code, access_token, access_token_updated_at FROM user_accounts WHERE id=?",
         (account_id,),
     ) as cur:
         row = await cur.fetchone()
@@ -334,6 +339,7 @@ async def get_user_account_by_id(account_id: int) -> Optional[Dict[str, Any]]:
                 return {
                     "id": row[0], "user_id": row[1], "platform": row[2],
                     "refresh_token": row[7], "center_uid": row[8], "dev_code": row[9],
+                    "access_token": row[10] or "", "access_token_updated_at": row[11] or "",
                 }
         return None
 
@@ -406,12 +412,18 @@ async def update_user_notify(user_id: int, notify_data: dict) -> None:
     await _db.commit()
 
 
-async def update_user_account_token(user_id: int, center_uid: str, new_refresh_token: str) -> None:
-    """更新用户的塔吉多 refresh_token"""
+async def update_user_account_token(
+    user_id: int,
+    center_uid: str,
+    new_refresh_token: str,
+    new_access_token: str = "",
+) -> None:
+    """更新用户的塔吉多 refresh_token 和 access_token"""
     assert _db is not None
+    now = _now_cn_str()
     await _db.execute(
-        "UPDATE user_accounts SET refresh_token=? WHERE user_id=? AND center_uid=?",
-        (new_refresh_token, user_id, center_uid),
+        "UPDATE user_accounts SET refresh_token=?, access_token=?, access_token_updated_at=? WHERE user_id=? AND center_uid=?",
+        (new_refresh_token, new_access_token, now, user_id, center_uid),
     )
     await _db.commit()
 

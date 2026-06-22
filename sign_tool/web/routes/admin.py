@@ -214,6 +214,8 @@ async def sign_all(current_user: dict = Depends(get_admin_user)):
                             dev_code=acc["dev_code"],
                             config=config,
                             user_id=user_id,
+                            access_token=acc.get("access_token", ""),
+                            access_token_updated_at=acc.get("access_token_updated_at", ""),
                         )
                         user_results.append(results)
                         for line in results:
