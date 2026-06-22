@@ -514,26 +514,23 @@
                 </div>
                 <div id="admin-sign-log" class="sign-log"></div>
             </div>
-        </div>
-
-        <!-- 更新 -->
-        <div class="card">
-            <h2>程序更新</h2>
-            <div class="schedule-status">
-                <span class="status-dot off" id="update-dot"></span>
-                <div>
-                    <div class="status-text" id="update-status-text">点击按钮检查更新</div>
-                    <div class="status-detail" id="update-status-detail">从 GitHub 拉取最新代码并重启服务</div>
+            <!-- 程序更新（仅管理员） -->
+            <div class="card">
+                <h2>程序更新</h2>
+                <div class="schedule-status">
+                    <span class="status-dot off" id="update-dot"></span>
+                    <div>
+                        <div class="status-text" id="update-status-text">点击按钮检查更新</div>
+                        <div class="status-detail" id="update-status-detail">从 GitHub 拉取最新代码并重启服务</div>
+                    </div>
                 </div>
+                <div class="schedule-actions">
+                    <button class="btn-primary" onclick="doUpdate()" id="btn-update">检查更新</button>
+                </div>
+                <div id="update-msg" class="msg"></div>
             </div>
-            <div class="schedule-actions">
-                <button class="btn-primary" onclick="doUpdate()" id="btn-update">检查更新</button>
-            </div>
-            <div id="update-msg" class="msg"></div>
         </div>
-    </div>
-
-    <script>
+    </div>    <script>
         // ===== 全局状态 =====
         var token = localStorage.getItem('token');
         var currentUser = null;

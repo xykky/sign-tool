@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 
 from ..config import (
@@ -23,6 +23,7 @@ from ..config import (
     TajiduoAccount,
 )
 from .. import db
+from ..auth import get_admin_user
 
 app = FastAPI(title="签到工具", docs_url=None, redoc_url=None)
 _config: Config = None  # type: ignore
@@ -374,7 +375,7 @@ async def test_notify():
 # ===== 更新 =====
 
 @app.post("/api/update")
-async def update_project():
+async def update_project(current_user: dict = Depends(get_admin_user)):
     """Pull latest code from git and restart service."""
     import subprocess
     import sys
