@@ -932,18 +932,25 @@ function loadMyStatus() {
         var keys = Object.keys(records);
         if (!keys.length) { el.innerHTML = '<div class="empty-state">暂无签到记录</div>'; return; }
 
-        var h = '<div class="status-list">';
+        // Group ref_ids: kuro_bbs:uid → uid
+        var groups = {};
         keys.forEach(function(refId) {
-            var items = records[refId];
-            h += '<div class="status-card"><div class="status-title"><span class="platform-tag tag-tajiduo" style="font-size:10px">账号</span>' + escapeHtml(refId) + '</div><div class="status-items">';
+            var groupKey = refId.indexOf('kuro_bbs:') === 0 ? refId.slice(9) : refId;
+            if (!groups[groupKey]) groups[groupKey] = [];
+            records[refId].forEach(function(item) { groups[groupKey].push({refId: refId, kind: item.kind, payload: item.payload}); });
+        });
+        var groupKeys = Object.keys(groups);
+        var h = '';
+        groupKeys.forEach(function(groupKey) {
+            var items = groups[groupKey];
+            h += '<div class="status-card"><div class="status-card-header"><span class="platform-tag tag-tajiduo">账号</span>' + escapeHtml(groupKey) + '</div><div class="status-items">';
             items.forEach(function(item) {
                 var label = KIND_LABELS[item.kind] || item.kind;
                 h += '<div class="status-item"><span class="status-dot dot-ok"></span>' + escapeHtml(label) + '</div>';
             });
             h += '</div></div>';
         });
-        h += '</div>';
-        el.innerHTML = h;
+        el.innerHTML = h || '<div class="empty-state">暂无签到记录</div>';
     }).catch(function() { $('my-status-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
 }
 
@@ -1106,20 +1113,36 @@ function loadAdminAccounts() {
 function loadAdminStatus() {
     apiFetch('/api/admin/status').then(function(data) {
         var el = $('admin-status-list');
-        var records = data.records || {};
-        var keys = Object.keys(records);
-        if (!keys.length) { el.innerHTML = '<div class="empty-state">' + (data.date || '') + ' 暂无签到记录</div>'; return; }
-        var h = '<div class="status-list">';
-        keys.forEach(function(refId) {
-            var items = records[refId];
-            h += '<div class="status-card"><div class="status-title">' + escapeHtml(refId) + '</div><div class="status-items">';
-            items.forEach(function(item) {
-                var label = KIND_LABELS[item.kind] || item.kind;
-                h += '<div class="status-item"><span class="status-dot dot-ok"></span>' + escapeHtml(label) + '</div>';
-            });
-            h += '</div></div>';
+        var users = data.users || {};
+        var usernames = Object.keys(users);
+        if (!usernames.length) { el.innerHTML = '<div class="empty-state">' + (data.date || '') + ' 暂无签到记录</div>'; return; }
+        var h = '';
+        usernames.forEach(function(username) {
+            var userData = users[username];
+            var records = userData.records || {};
+            var refIds = Object.keys(records);
+            h += '<div class="status-group"><div class="status-group-title"><span class="platform-tag" style="background:#e8f0fe;color:#1967d2">' + escapeHtml(username) + '</span></div>';
+            if (!refIds.length) {
+                h += '<div class="empty-state" style="padding:12px">无记录</div>';
+            } else {
+                var groups = {};
+                refIds.forEach(function(refId) {
+                    var gk = refId.indexOf('kuro_bbs:') === 0 ? refId.slice(9) : refId;
+                    if (!groups[gk]) groups[gk] = [];
+                    records[refId].forEach(function(item) { groups[gk].push(item); });
+                });
+                Object.keys(groups).forEach(function(gk) {
+                    var items = groups[gk];
+                    h += '<div class="status-card"><div class="status-card-header"><span class="platform-tag tag-tajiduo">' + escapeHtml(gk) + '</span></div><div class="status-items">';
+                    items.forEach(function(item) {
+                        var label = KIND_LABELS[item.kind] || item.kind;
+                        h += '<div class="status-item"><span class="status-dot dot-ok"></span>' + escapeHtml(label) + '</div>';
+                    });
+                    h += '</div></div>';
+                });
+            }
+            h += '</div>';
         });
-        h += '</div>';
         el.innerHTML = h;
     }).catch(function() { $('admin-status-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
 }
