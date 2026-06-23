@@ -289,6 +289,7 @@ async def sign(current_user: dict = Depends(get_current_user)):
                         game=acc["game"],
                         did=acc["did"],
                         bbs_enabled=config.kuro_bbs.enabled,
+                        user_id=current_user["id"],
                     )
                     all_results.append(results)
                     for line in results:

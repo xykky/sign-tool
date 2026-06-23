@@ -11,18 +11,18 @@ from .constants import PGR_GAME_ID
 logger = get_logger()
 
 
-async def sign_game(client: KuroClient) -> str:
+async def sign_game(client: KuroClient, user_id: int | None = None) -> str:
     """Sign in for game. Returns status message."""
     ref_id = client.uid
-    if await db.is_signed(ref_id, "game_sign"):
+    if await db.is_signed(ref_id, "game_sign", user_id=user_id):
         return "游戏签到: 今日已签"
 
     try:
         result = await client.sign_in()
         if result.get("already_signed"):
-            await db.record_sign(ref_id, "game_sign", {"path": "api_check"})
+            await db.record_sign(ref_id, "game_sign", {"path": "api_check"}, user_id=user_id)
             return "游戏签到: 今日已签"
-        await db.record_sign(ref_id, "game_sign", result)
+        await db.record_sign(ref_id, "game_sign", result, user_id=user_id)
         return "游戏签到: 成功"
     except KuroError as e:
         if e.code == CODE_TOKEN_INVALID:
@@ -31,23 +31,23 @@ async def sign_game(client: KuroClient) -> str:
         return f"游戏签到: 失败 ({e.message})"
 
 
-async def sign_bbs(client: KuroClient, enabled_tasks: list[str]) -> list[str]:
+async def sign_bbs(client: KuroClient, enabled_tasks: list[str], user_id: int | None = None) -> list[str]:
     """Execute BBS community tasks. Returns list of status messages."""
     results = []
     uid = client.uid
 
     # BBS sign-in
     if "sign" in enabled_tasks:
-        if await db.is_signed(f"kuro_bbs:{uid}", "bbs_sign"):
+        if await db.is_signed(f"kuro_bbs:{uid}", "bbs_sign", user_id=user_id):
             results.append("BBS签到: 今日已签")
         else:
             try:
                 r = await client.bbs_sign_in()
                 if r.get("already_signed"):
-                    await db.record_sign(f"kuro_bbs:{uid}", "bbs_sign")
+                    await db.record_sign(f"kuro_bbs:{uid}", "bbs_sign", user_id=user_id)
                     results.append("BBS签到: 今日已签")
                 else:
-                    await db.record_sign(f"kuro_bbs:{uid}", "bbs_sign")
+                    await db.record_sign(f"kuro_bbs:{uid}", "bbs_sign", user_id=user_id)
                     results.append("BBS签到: 成功")
             except KuroError as e:
                 results.append(f"BBS签到: 失败 ({e.message})")
@@ -63,28 +63,28 @@ async def sign_bbs(client: KuroClient, enabled_tasks: list[str]) -> list[str]:
                 needed = task.get("needActionTimes", 1)
 
                 if "浏览" in remark and "detail" in enabled_tasks:
-                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_detail"):
+                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_detail", user_id=user_id):
                         results.append("浏览帖子: 今日已完成")
                     elif complete >= needed:
-                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_detail")
+                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_detail", user_id=user_id)
                         results.append("浏览帖子: 今日已完成")
                     else:
                         tasks_to_run.append(("detail", needed - complete))
 
                 elif "点赞" in remark and "like" in enabled_tasks:
-                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_like"):
+                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_like", user_id=user_id):
                         results.append("点赞帖子: 今日已完成")
                     elif complete >= needed:
-                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_like")
+                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_like", user_id=user_id)
                         results.append("点赞帖子: 今日已完成")
                     else:
                         tasks_to_run.append(("like", needed - complete))
 
                 elif "分享" in remark and "share" in enabled_tasks:
-                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_share"):
+                    if await db.is_signed(f"kuro_bbs:{uid}", "bbs_share", user_id=user_id):
                         results.append("分享帖子: 今日已完成")
                     elif complete >= needed:
-                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_share")
+                        await db.record_sign(f"kuro_bbs:{uid}", "bbs_share", user_id=user_id)
                         results.append("分享帖子: 今日已完成")
                     else:
                         tasks_to_run.append(("share", 1))
@@ -124,7 +124,7 @@ async def sign_bbs(client: KuroClient, enabled_tasks: list[str]) -> list[str]:
 
             kind = f"bbs_{task_type}"
             if done >= count:
-                await db.record_sign(f"kuro_bbs:{uid}", kind)
+                await db.record_sign(f"kuro_bbs:{uid}", kind, user_id=user_id)
                 label = {"detail": "浏览帖子", "like": "点赞帖子", "share": "分享帖子"}[task_type]
                 results.append(f"{label}: 成功 ({done}/{count})")
             else:
@@ -134,7 +134,14 @@ async def sign_bbs(client: KuroClient, enabled_tasks: list[str]) -> list[str]:
     return results
 
 
-async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled: list[str]) -> list[str]:
+async def sign_one_kuro(
+    cookie: str,
+    uid: str,
+    game: str,
+    did: str,
+    bbs_enabled: list[str],
+    user_id: int | None = None,
+) -> list[str]:
     """Sign one Kuro account. Returns list of status messages.
 
     Matches RoverSign's on-demand flow: go directly to sign_in without
@@ -146,11 +153,11 @@ async def sign_one_kuro(cookie: str, uid: str, game: str, did: str, bbs_enabled:
     results = [f"[库洛 {uid} ({game})]"]
 
     # Game sign — directly call sign_in (includes sign_in_task_list check internally)
-    results.append(await sign_game(client))
+    results.append(await sign_game(client, user_id=user_id))
 
     # BBS tasks
     if bbs_enabled:
-        bbs_results = await sign_bbs(client, bbs_enabled)
+        bbs_results = await sign_bbs(client, bbs_enabled, user_id=user_id)
         results.extend(bbs_results)
 
     return results

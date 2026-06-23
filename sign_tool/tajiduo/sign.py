@@ -39,24 +39,24 @@ def _is_already_signed(error: TajiduoError) -> bool:
     return any(hint in error.message for hint in ("重复", "已签", "已经签到"))
 
 
-async def _app_sign(client: TajiduoClient, center_uid: str) -> str:
+async def _app_sign(client: TajiduoClient, center_uid: str, user_id: int | None = None) -> str:
     label = "塔吉多签到"
-    if await db.is_signed(center_uid, "app_sign"):
+    if await db.is_signed(center_uid, "app_sign", user_id=user_id):
         return f"{label}: 今日已签"
 
     try:
         if await client.get_community_sign_state(TAJIDUO_SIGNIN_COMMUNITY_ID):
-            await db.record_sign(center_uid, "app_sign", {"path": "state_hit"})
+            await db.record_sign(center_uid, "app_sign", {"path": "state_hit"}, user_id=user_id)
             return f"{label}: 今日已签"
         result = await client.app_signin(TAJIDUO_SIGNIN_COMMUNITY_ID)
     except TajiduoError as error:
         if _is_already_signed(error):
-            await db.record_sign(center_uid, "app_sign", error.raw)
+            await db.record_sign(center_uid, "app_sign", error.raw, user_id=user_id)
             return f"{label}: 今日已签"
         logger.warning(f"塔吉多签到失败: {error.message}")
         return f"{label}: 失败 ({error.message})"
 
-    await db.record_sign(center_uid, "app_sign", {"exp": result.exp, "gold": result.gold_coin})
+    await db.record_sign(center_uid, "app_sign", {"exp": result.exp, "gold": result.gold_coin}, user_id=user_id)
     rewards = []
     if result.exp:
         rewards.append(f"exp+{result.exp}")
@@ -66,22 +66,29 @@ async def _app_sign(client: TajiduoClient, center_uid: str) -> str:
     return f"{label}: 成功" + (f" ({extra})" if extra else "")
 
 
-async def _game_sign(client: TajiduoClient, role_id: str, role_name: str, game_id: str, game_label: str) -> str:
+async def _game_sign(
+    client: TajiduoClient,
+    role_id: str,
+    role_name: str,
+    game_id: str,
+    game_label: str,
+    user_id: int | None = None,
+) -> str:
     label = f"{role_name} {game_label}游戏签到"
     record_ref = f"{game_id}:{role_id}"
-    if await db.is_signed(record_ref, "game_sign"):
+    if await db.is_signed(record_ref, "game_sign", user_id=user_id):
         return f"{label}: 今日已签"
 
     try:
         data = await client.game_signin(role_id, game_id)
     except TajiduoError as error:
         if _is_already_signed(error):
-            await db.record_sign(record_ref, "game_sign", error.raw)
+            await db.record_sign(record_ref, "game_sign", error.raw, user_id=user_id)
             return f"{label}: 今日已签"
         logger.warning(f"游戏签到失败 role={role_id}: {error.message}")
         return f"{label}: 失败 ({error.message})"
 
-    await db.record_sign(record_ref, "game_sign", data)
+    await db.record_sign(record_ref, "game_sign", data, user_id=user_id)
     return f"{label}: 成功"
 
 
@@ -146,6 +153,7 @@ async def _daily_tasks(
     enabled_tasks: list[str],
     action_delay: tuple[float, float],
     max_failures: int,
+    user_id: int | None = None,
 ) -> list[str]:
     results = []
     enabled_keys = [k for k in TASK_LABELS if k in enabled_tasks]
@@ -155,7 +163,7 @@ async def _daily_tasks(
     # Check local records first
     local_done: dict[str, bool] = {}
     for key in enabled_keys:
-        local_done[key] = await db.is_signed(center_uid, f"task_{key}")
+        local_done[key] = await db.is_signed(center_uid, f"task_{key}", user_id=user_id)
 
     pending_keys = [k for k in enabled_keys if not local_done[k]]
     if not pending_keys:
@@ -190,7 +198,7 @@ async def _daily_tasks(
             await db.record_sign(center_uid, f"task_{key}", {
                 "path": "server_finished",
                 "complete_times": task.complete_times,
-            })
+            }, user_id=user_id)
             results.append(f"{label}: 今日已完成 {task.complete_times}/{task.limit_times}")
             continue
 
@@ -208,7 +216,7 @@ async def _daily_tasks(
                 "path": "local_completed",
                 "done": done,
                 "failed": failed,
-            })
+            }, user_id=user_id)
             results.append(f"{label}: 成功 {reached}/{task.limit_times}")
         else:
             detail = f"{reached}/{task.limit_times}" + (f" 失败{failed}" if failed else "")
@@ -276,7 +284,7 @@ async def sign_one_tajiduo(
             return results
 
     # App sign
-    results.append(await _app_sign(client, center_uid))
+    results.append(await _app_sign(client, center_uid, user_id=user_id))
 
     # Game roles - sign for each game
     game_roles: list[tuple[str, str, str, str]] = []  # (role_id, role_name, game_id, game_label)
@@ -291,7 +299,7 @@ async def sign_one_tajiduo(
             logger.debug(f"获取{game_label}角色列表失败: {e.message}")
 
     for role_id, role_name, game_id, game_label in game_roles:
-        results.append(await _game_sign(client, role_id, role_name, game_id, game_label))
+        results.append(await _game_sign(client, role_id, role_name, game_id, game_label, user_id=user_id))
 
     # Daily tasks
     task_config = config.tajiduo_tasks
@@ -301,6 +309,7 @@ async def sign_one_tajiduo(
             task_config.enabled,
             task_config.action_delay,
             task_config.max_failures,
+            user_id=user_id,
         )
         results.extend(task_results)
 

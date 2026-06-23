@@ -192,6 +192,7 @@ async def sign_all(current_user: dict = Depends(get_admin_user)):
                             game=acc["game"],
                             did=acc["did"],
                             bbs_enabled=config.kuro_bbs.enabled,
+                            user_id=user_id,
                         )
                         user_results.append(results)
                         for line in results:

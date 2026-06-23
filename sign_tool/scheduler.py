@@ -77,6 +77,7 @@ async def _sign_users(config_path: str, user_ids: list[int]):
                         game=acc["game"],
                         did=acc["did"],
                         bbs_enabled=config.kuro_bbs.enabled,
+                        user_id=user_id,
                     )
                     user_results.append(results)
                     for line in results:

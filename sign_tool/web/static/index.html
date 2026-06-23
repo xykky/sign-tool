@@ -2,366 +2,483 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>签到工具</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --bg: #f5f5f7;
+            --surface: #ffffff;
+            --surface2: #fafafa;
+            --border: rgba(0,0,0,0.06);
+            --text: #1d1d1f;
+            --text2: #6e6e73;
+            --text3: #aeaeb2;
+            --blue: #007aff;
+            --blue-bg: #ebf5ff;
+            --green: #34c759;
+            --green-bg: #e9f8ed;
+            --red: #ff3b30;
+            --red-bg: #fff0ef;
+            --orange: #ff9500;
+            --orange-bg: #fff5ea;
+            --purple: #af52de;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f0f2f5;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100dvh;
+            -webkit-font-smoothing: antialiased;
         }
-        h1 {
+
+        .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+
+        /* ── Header ── */
+        .header {
             text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #1a1a1a;
+            padding: 20px 0 8px;
         }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text);
+        }
+
+        /* ── Card ── */
         .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        .card h2 {
-            font-size: 16px;
-            color: #555;
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px 24px;
             margin-bottom: 12px;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 8px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: box-shadow .2s;
+        }
+        .card:hover { box-shadow: var(--shadow); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .card-header h2 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .card-header .badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 20px;
+            letter-spacing: .3px;
+        }
+        .badge-blue { background: var(--blue-bg); color: var(--blue); }
+        .badge-green { background: var(--green-bg); color: var(--green); }
+        .badge-red { background: var(--red-bg); color: var(--red); }
+
+        /* ── Form ── */
+        .form-group { margin-bottom: 12px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text2);
+            margin-bottom: 6px;
         }
         .form-row {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
-        .form-group {
-            margin-bottom: 12px;
-        }
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 4px;
-        }
+
         input, select {
-            padding: 8px 12px;
-            border: 1px solid #d9d9d9;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-family: var(--font);
+            background: var(--surface2);
+            color: var(--text);
             outline: none;
-            transition: border-color 0.2s;
+            transition: all .2s;
+            -webkit-appearance: none;
         }
         input:focus, select:focus {
-            border-color: #4a90d9;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(0,122,255,.12);
+            background: var(--surface);
         }
-        input[type="time"] { width: 120px; }
-        input[type="text"], input[type="tel"], input[type="password"] { flex: 1; min-width: 120px; }
+        input[type="time"] { width: 100px; }
+        input[type="text"], input[type="tel"], input[type="password"] { flex:1; min-width:120px; }
+
+        /* ── Buttons ── */
         button {
-            padding: 8px 16px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font);
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: all .15s;
+            -webkit-tap-highlight-color: transparent;
         }
-        button:active { transform: scale(0.98); }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-primary { background: #4a90d9; color: #fff; }
-        .btn-primary:hover { background: #357abd; }
-        .btn-success { background: #52c41a; color: #fff; }
-        .btn-success:hover { background: #45a817; }
-        .btn-danger { background: #ff4d4f; color: #fff; }
-        .btn-danger:hover { background: #e8383a; }
-        .btn-warning { background: #faad14; color: #fff; }
-        .btn-warning:hover { background: #d9a012; }
-        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        button:active { transform: scale(.97); }
+        button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        .btn-primary { background: var(--blue); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #0066d6; }
+
+        .btn-success { background: var(--green); color: #fff; }
+        .btn-success:hover:not(:disabled) { background: #2db44d; }
+
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-danger:hover:not(:disabled) { background: #e0302c; }
+
+        .btn-warning { background: var(--orange); color: #fff; }
+        .btn-warning:hover:not(:disabled) { background: #e08600; }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--blue);
+            padding: 8px 16px;
+        }
+        .btn-ghost:hover:not(:disabled) { background: var(--blue-bg); }
+
+        .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 14px; }
+        .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 12px; }
+
         .btn-outline {
             background: transparent;
-            border: 1px solid #d9d9d9;
-            color: #666;
+            border: 1.5px solid var(--border);
+            color: var(--text2);
         }
-        .btn-outline:hover { border-color: #4a90d9; color: #4a90d9; }
+        .btn-outline:hover:not(:disabled) {
+            border-color: var(--blue);
+            color: var(--blue);
+            background: var(--blue-bg);
+        }
 
-        /* 消息提示 */
+        /* ── Message ── */
         .msg {
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-top: 8px;
-            font-size: 14px;
-            display: none;
-        }
-        .msg.ok { display: block; background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
-        .msg.err { display: block; background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
-
-        /* 账号列表 */
-        .account-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f5f5f5;
-        }
-        .account-item:last-child { border-bottom: none; }
-        .account-info { flex: 1; }
-        .account-platform {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 8px;
-        }
-        .platform-kuro { background: #e6f7ff; color: #1890ff; }
-        .platform-tajiduo { background: #fff7e6; color: #fa8c16; }
-        .account-uid { font-weight: 500; }
-        .account-detail { font-size: 12px; color: #999; }
-
-        /* 签到状态 */
-        .status-group {
-            margin-bottom: 12px;
-            padding: 10px;
-            background: #fafafa;
-            border-radius: 8px;
-        }
-        .status-group-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 6px;
-            color: #333;
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
+            margin-top: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
-        }
-        .status-kind { color: #666; }
-        .status-icon { font-size: 16px; }
-        .status-ok { color: #52c41a; }
-        .status-skip { color: #999; }
-        .status-fail { color: #ff4d4f; }
-        .status-progress { color: #1890ff; }
-
-        /* 签到进度 */
-        .sign-log {
-            background: #1a1a1a;
-            color: #0f0;
-            font-family: "Cascadia Code", "Fira Code", monospace;
-            font-size: 13px;
-            padding: 12px;
-            border-radius: 8px;
-            max-height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
+            font-weight: 500;
             display: none;
-            margin-top: 12px;
+            animation: fadeIn .2s;
         }
-        .sign-log.show { display: block; }
-        .sign-log .log-error { color: #ff4d4f; }
-        .sign-log .log-skip { color: #999; }
-        .sign-log .log-progress { color: #1890ff; }
-        .sign-log .log-done { color: #52c41a; }
+        .msg.show { display: block; }
+        .msg-ok { background: var(--green-bg); color: var(--green); }
+        .msg-err { background: var(--red-bg); color: var(--red); }
 
-        /* 定时配置 */
-        .schedule-status {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-        .schedule-status .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .status-dot.on { background: #52c41a; }
-        .status-dot.off { background: #d9d9d9; }
-        .schedule-status .status-text {
-            font-size: 14px;
-            color: #333;
-        }
-        .schedule-status .status-detail {
-            font-size: 12px;
-            color: #999;
-        }
-        .schedule-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 
-        /* 空状态 */
-        .empty {
-            text-align: center;
-            color: #999;
-            padding: 20px;
-            font-size: 14px;
-        }
-
-        /* 用户信息栏 */
+        /* ── User Bar ── */
         .user-bar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
-            background: #fff;
-            border-radius: 8px;
+            justify-content: space-between;
+            padding: 10px 16px;
             margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
         }
         .user-info {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
-        .user-avatar {
-            width: 32px;
-            height: 32px;
+        .avatar {
+            width: 36px; height: 36px;
             border-radius: 50%;
-            background: #4a90d9;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
             color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
+            flex-shrink: 0;
         }
-        .user-name {
-            font-weight: 500;
-            font-size: 14px;
-        }
-        .user-role {
-            font-size: 12px;
-            color: #999;
-        }
-        .admin-badge {
+        .user-name { font-weight: 600; font-size: 15px; }
+        .user-role { font-size: 12px; color: var(--text2); }
+        .role-badge {
             display: inline-block;
-            padding: 2px 6px;
-            background: #faad14;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--orange), #ff6b00);
             color: #fff;
-            border-radius: 4px;
-            font-size: 11px;
-            margin-left: 4px;
+            margin-left: 6px;
         }
 
-        /* 标签页 */
+        /* ── Tabs ── */
         .tabs {
             display: flex;
-            gap: 4px;
+            gap: 2px;
             margin-bottom: 16px;
-            background: #fff;
-            border-radius: 8px;
+            background: var(--surface);
+            border-radius: var(--radius);
             padding: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
         }
         .tab {
             flex: 1;
             padding: 10px;
             text-align: center;
-            border-radius: 6px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
-            color: #666;
-            transition: all 0.2s;
+            font-weight: 500;
+            color: var(--text2);
+            transition: all .2s;
+            border: none;
+            background: transparent;
         }
-        .tab:hover { background: #f5f5f5; }
-        .tab.active { background: #4a90d9; color: #fff; }
-        .tab-content { display: none; }
+        .tab:hover { color: var(--text); background: var(--surface2); }
+        .tab.active { background: var(--blue); color: #fff; font-weight: 600; }
+        .tab-content { display: none; animation: fadeIn .3s; }
         .tab-content.active { display: block; }
 
-        /* 用户管理表格 */
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
+        /* ── Account List ── */
+        .account-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .account-item:last-child { border-bottom: none; }
+        .platform-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .tag-kuro { background: var(--blue-bg); color: var(--blue); }
+        .tag-tajiduo { background: var(--orange-bg); color: var(--orange); }
+        .account-uid { font-weight: 600; font-size: 14px; }
+        .account-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+        /* ── Status ── */
+        .status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .status-card {
+            background: var(--surface2);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+        }
+        .status-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 600;
             font-size: 14px;
         }
-        .user-table th, .user-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #f0f0f0;
+        .status-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 6px;
         }
-        .user-table th {
-            background: #fafafa;
-            font-weight: 500;
-            color: #666;
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text2);
+            padding: 4px 0;
         }
-        .user-table tr:hover { background: #fafafa; }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot-ok { background: var(--green); }
+        .dot-miss { background: var(--text3); }
 
-        /* 响应式 */
-        @media (max-width: 600px) {
-            body { padding: 12px; }
+        .empty-state {
+            text-align: center;
+            color: var(--text3);
+            padding: 32px 20px;
+            font-size: 14px;
+        }
+
+        /* ── Sign Log ── */
+        .sign-log {
+            background: #1a1a2e;
+            color: #a0ffa0;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 12px;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 12px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+        .sign-log.show { display: block; }
+        .sign-log .e { color: #ff6b6b; }
+        .sign-log .s { color: #888; }
+        .sign-log .p { color: #7ec8ff; }
+        .sign-log .d { color: #6bff9e; }
+
+        /* ── Schedule ── */
+        .schedule-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--surface2);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+        .sched-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .sched-on { background: var(--green); box-shadow: 0 0 6px rgba(52,199,89,.4); }
+        .sched-off { background: var(--text3); }
+        .sched-text { font-size: 14px; font-weight: 500; }
+        .sched-detail { font-size: 12px; color: var(--text2); }
+
+        /* ── Table ── */
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .tbl th, .tbl td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .tbl th {
+            font-weight: 600;
+            color: var(--text2);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .tbl tbody tr:hover { background: var(--surface2); }
+
+        /* ── Utility ── */
+        .flex-between { display:flex; justify-content:space-between; align-items:center; }
+        .gap-8 { gap:8px; }
+        .mt-8 { margin-top:8px; }
+        .text-sm { font-size:13px; }
+        .text-muted { color: var(--text2); }
+
+        /* ── Toggle Switch ── */
+        .toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text2);
+        }
+        .toggle-track {
+            width: 44px; height: 26px;
+            border-radius: 13px;
+            background: #e5e5ea;
+            position: relative;
+            transition: background .2s;
+        }
+        .toggle-track.on { background: var(--green); }
+        .toggle-track::after {
+            content: '';
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #fff;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: transform .2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,.2);
+        }
+        .toggle-track.on::after { transform: translateX(18px); }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            .container { padding: 12px 10px 80px; }
             .card { padding: 16px; }
-            .form-row { flex-direction: column; }
-            .form-row input, .form-row select, .form-row button { width: 100%; }
-            .tabs { flex-wrap: wrap; }
-            .tab { flex: none; width: calc(50% - 4px); }
+            .header h1 { font-size: 22px; }
+            .status-items { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <h1>签到工具</h1>
+<div class="container">
+    <div class="header"><h1>签到工具</h1></div>
 
-    <!-- 未登录：登录/注册界面 -->
+    <!-- Auth -->
     <div id="auth-section">
         <div class="card">
-            <h2 id="auth-title">登录</h2>
-            <div class="form-group">
-                <label>用户名</label>
-                <input type="text" id="auth-username" placeholder="请输入用户名">
-            </div>
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="auth-password" placeholder="请输入密码">
-            </div>
+            <h2 id="auth-title" style="margin-bottom:16px">登录</h2>
+            <div class="form-group"><label>用户名</label><input type="text" id="auth-username" placeholder="请输入用户名" autocomplete="username"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="auth-password" placeholder="请输入密码" autocomplete="current-password"></div>
             <div class="form-row">
                 <button class="btn-primary" onclick="doAuth()" id="btn-auth">登录</button>
-                <button class="btn-outline" onclick="toggleAuthMode()" id="btn-toggle-auth">没有账号？注册</button>
+                <button class="btn-ghost" onclick="toggleAuthMode()" id="btn-toggle-auth">没有账号？注册</button>
             </div>
             <div id="auth-msg" class="msg"></div>
         </div>
     </div>
 
-    <!-- 已登录：主界面 -->
+    <!-- Main -->
     <div id="main-section" style="display:none">
-        <!-- 用户信息栏 -->
         <div class="user-bar">
             <div class="user-info">
-                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="avatar" id="user-avatar">U</div>
                 <div>
-                    <div class="user-name">
-                        <span id="display-username">用户</span>
-                        <span id="admin-badge" class="admin-badge" style="display:none">管理员</span>
-                    </div>
+                    <div class="user-name"><span id="display-username">用户</span><span id="admin-badge" class="role-badge" style="display:none">ADMIN</span></div>
                     <div class="user-role" id="display-role">普通用户</div>
                 </div>
             </div>
-            <button class="btn-outline btn-sm" onclick="doLogout()">退出</button>
+            <button class="btn-ghost btn-sm" onclick="doLogout()">退出</button>
         </div>
 
-        <!-- 管理员标签页 -->
         <div id="admin-tabs" class="tabs" style="display:none">
-            <div class="tab active" onclick="switchTab('user')">我的</div>
-            <div class="tab" onclick="switchTab('admin')">管理</div>
+            <button class="tab active" onclick="switchTab('user')">我的</button>
+            <button class="tab" onclick="switchTab('admin')">管理</button>
         </div>
 
-        <!-- 用户功能 -->
+        <!-- User content -->
         <div id="user-content" class="tab-content active">
-            <!-- 添加账号 -->
             <div class="card">
-                <h2>添加账号</h2>
+                <div class="card-header"><h2>添加账号</h2></div>
                 <div class="form-row">
                     <select id="add-platform" onchange="onAddPlatformChange()">
                         <option value="kuro">库洛 (鸣潮/战双)</option>
@@ -372,1141 +489,765 @@
                         <option value="pgr">战双</option>
                     </select>
                 </div>
-                <div class="form-row">
+                <div class="form-row" style="margin-top:8px">
                     <input id="add-phone" type="tel" placeholder="手机号" maxlength="11">
                     <input id="add-code" type="text" placeholder="验证码" maxlength="6">
                 </div>
-                <div class="form-row">
-                    <button class="btn-outline" onclick="sendAddCode()" id="btn-send-add-code">发送验证码</button>
+                <div class="form-row" style="margin-top:8px">
+                    <button class="btn-outline btn-sm" onclick="sendAddCode()" id="btn-send-add-code">发送验证码</button>
                     <button class="btn-primary" onclick="doAddLogin()" id="btn-add-login">登录并添加</button>
                 </div>
                 <div id="add-msg" class="msg"></div>
             </div>
 
-            <!-- 我的账号 -->
             <div class="card">
-                <h2>我的账号</h2>
-                <div id="my-account-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>我的账号</h2></div>
+                <div id="my-account-list"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 我的签到状态 -->
             <div class="card">
-                <h2>今日签到状态</h2>
-                <div id="my-status-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>今日签到状态</h2><span class="badge badge-blue" id="status-date"></span></div>
+                <div id="my-status-list"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 执行签到 -->
             <div class="card">
-                <h2>执行签到</h2>
-                <div class="form-row">
-                    <button class="btn-success" onclick="doMySign()" id="btn-my-sign">开始签到</button>
-                </div>
+                <div class="card-header"><h2>执行签到</h2></div>
+                <button class="btn-success" onclick="doMySign()" id="btn-my-sign" style="width:100%">开始签到</button>
                 <div id="my-sign-log" class="sign-log"></div>
             </div>
 
-            <!-- 我的定时签到 -->
             <div class="card">
-                <h2>我的定时签到</h2>
-                <div id="my-schedule-status" class="schedule-status">
-                    <span class="status-dot off"></span>
-                    <div>
-                        <div class="status-text">加载中...</div>
-                        <div class="status-detail">定时签到设置</div>
-                    </div>
-                </div>
-                <div class="schedule-actions">
-                    <input type="time" id="my-sched-time" value="06:00" onchange="saveMySchedule()">
-                    <button class="btn-warning" onclick="toggleMySchedule()" id="btn-toggle-my-sched">启用定时</button>
-                </div>
-                <div id="my-schedule-msg" class="msg"></div>
+                <div class="card-header"><h2>推送通知</h2></div>
+                <div id="my-notify-section"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 我的推送配置 -->
             <div class="card">
-                <h2>推送通知</h2>
-                <div id="my-notify-status" class="schedule-status">
-                    <span class="status-dot off"></span>
-                    <div>
-                        <div class="status-text">加载中...</div>
-                        <div class="status-detail">签到完成后推送结果</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Server酱 SCKEY</label>
-                    <input type="text" id="my-notify-sckey" placeholder="SCT0123456789abcdef...">
-                </div>
-                <div class="form-group">
-                    <label>Telegram Bot Token</label>
-                    <input type="text" id="my-notify-tg-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz...">
-                </div>
-                <div class="form-group">
-                    <label>Telegram Chat ID</label>
-                    <input type="text" id="my-notify-tg-chat" placeholder="123456789">
-                </div>
-                <div class="form-row">
-                    <button class="btn-primary" onclick="saveMyNotify()">保存配置</button>
-                    <button class="btn-outline" onclick="toggleMyNotify()" id="btn-toggle-my-notify">启用推送</button>
-                    <button class="btn-outline" onclick="testMyNotify()">测试推送</button>
-                </div>
-                <div id="my-notify-msg" class="msg"></div>
+                <div class="card-header"><h2>定时签到</h2></div>
+                <div id="my-schedule-section"><div class="empty-state">加载中...</div></div>
             </div>
         </div>
 
-        <!-- 管理员功能 -->
+        <!-- Admin content -->
         <div id="admin-content" class="tab-content">
-            <!-- 用户管理 -->
             <div class="card">
-                <h2>用户管理</h2>
-                <div id="admin-user-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>用户管理</h2></div>
+                <div id="admin-user-list"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 全部账号 -->
             <div class="card">
-                <h2>全部账号</h2>
-                <div id="admin-account-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>全部账号</h2></div>
+                <div id="admin-account-list"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 全部签到状态 -->
             <div class="card">
-                <h2>全部签到状态</h2>
-                <div id="admin-status-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>全部签到状态</h2></div>
+                <div id="admin-status-list"><div class="empty-state">加载中...</div></div>
             </div>
 
-            <!-- 用户定时管理 -->
             <div class="card">
-                <h2>用户定时管理</h2>
-                <div class="schedule-actions" style="margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
+                <div class="card-header"><h2>用户定时管理</h2></div>
+                <div class="form-row" style="margin-bottom:12px">
                     <input type="time" id="batch-sched-time" value="06:00">
-                    <button class="btn-warning" onclick="batchUpdateSchedules()">一键统一时间</button>
-                    <button class="btn-success" onclick="batchEnableSchedules()">一键开启</button>
-                    <button class="btn-danger" onclick="batchDisableSchedules()">一键关闭</button>
+                    <button class="btn-warning btn-sm" onclick="batchUpdateSchedules()">一键统一</button>
+                    <button class="btn-success btn-sm" onclick="batchEnableSchedules()">全部开启</button>
+                    <button class="btn-danger btn-sm" onclick="batchDisableSchedules()">全部关闭</button>
                 </div>
-                <div id="admin-schedule-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div id="admin-schedule-list"><div class="empty-state">加载中...</div></div>
                 <div id="admin-schedule-msg" class="msg"></div>
             </div>
 
-            <!-- 用户推送管理 -->
             <div class="card">
-                <h2>用户推送管理</h2>
-                <div id="admin-notify-list">
-                    <div class="empty">加载中...</div>
-                </div>
+                <div class="card-header"><h2>用户推送管理</h2></div>
+                <div id="admin-notify-list"><div class="empty-state">加载中...</div></div>
                 <div id="admin-notify-msg" class="msg"></div>
             </div>
 
-            <!-- 执行全部签到 -->
             <div class="card">
-                <h2>执行全部签到</h2>
-                <div class="form-row">
-                    <button class="btn-success" onclick="doAdminSign()" id="btn-admin-sign">执行全部签到</button>
-                </div>
+                <div class="card-header"><h2>执行全部签到</h2></div>
+                <button class="btn-success" onclick="doAdminSign()" id="btn-admin-sign" style="width:100%">执行全部签到</button>
                 <div id="admin-sign-log" class="sign-log"></div>
             </div>
-            <!-- 程序更新（仅管理员） -->
+
             <div class="card">
-                <h2>程序更新</h2>
+                <div class="card-header"><h2>程序更新</h2></div>
                 <div class="schedule-status">
-                    <span class="status-dot off" id="update-dot"></span>
+                    <div class="sched-dot sched-off" id="update-dot"></div>
                     <div>
-                        <div class="status-text" id="update-status-text">点击按钮检查更新</div>
-                        <div class="status-detail" id="update-status-detail">从 GitHub 拉取最新代码并重启服务</div>
+                        <div class="sched-text" id="update-status-text">点击按钮检查更新</div>
+                        <div class="sched-detail" id="update-status-detail">从 GitHub 拉取最新代码并重启服务</div>
                     </div>
                 </div>
-                <div class="schedule-actions">
-                    <button class="btn-primary" onclick="doUpdate()" id="btn-update">检查更新</button>
-                </div>
+                <button class="btn-primary" onclick="doUpdate()" id="btn-update" style="width:100%">检查更新</button>
                 <div id="update-msg" class="msg"></div>
             </div>
         </div>
-    </div>    <script>
-        // ===== 全局状态 =====
-        var token = localStorage.getItem('token');
-        var currentUser = null;
-        var isRegisterMode = false;
-
-        // ===== 工具函数 =====
-        function showMsg(id, text, ok) {
-            var el = document.getElementById(id);
-            el.textContent = text;
-            el.className = 'msg ' + (ok ? 'ok' : 'err');
-            setTimeout(function() { el.className = 'msg'; }, 5000);
-        }
-
-        function escapeHtml(text) {
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function apiFetch(url, options) {
-            options = options || {};
-            options.headers = options.headers || {};
-            if (token) {
-                options.headers['Authorization'] = 'Bearer ' + token;
-            }
-            if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-                options.headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(options.body);
-            }
-            return fetch(url, options).then(function(r) {
-                if (r.status === 401) {
-                    doLogout();
-                    throw new Error('登录已过期，请重新登录');
-                }
-                // SSE 响应不解析 JSON
-                if (options.stream) {
-                    return r;
-                }
-                return r.json();
-            });
-        }
-
-        // ===== 认证 =====
-        function toggleAuthMode() {
-            isRegisterMode = !isRegisterMode;
-            document.getElementById('auth-title').textContent = isRegisterMode ? '注册' : '登录';
-            document.getElementById('btn-auth').textContent = isRegisterMode ? '注册' : '登录';
-            document.getElementById('btn-toggle-auth').textContent = isRegisterMode ? '已有账号？登录' : '没有账号？注册';
-        }
-
-        function doAuth() {
-            var username = document.getElementById('auth-username').value.trim();
-            var password = document.getElementById('auth-password').value;
-
-            if (!username || !password) {
-                showMsg('auth-msg', '请输入用户名和密码', false);
-                return;
-            }
-
-            var endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-            var btn = document.getElementById('btn-auth');
-            btn.disabled = true;
-            btn.textContent = isRegisterMode ? '注册中...' : '登录中...';
-
-            fetch(endpoint, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: username, password: password}),
-            }).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.ok) {
-                    token = data.token;
-                    localStorage.setItem('token', token);
-                    currentUser = {
-                        id: data.user ? data.user.id : null,
-                        username: data.username,
-                        is_admin: data.is_admin || false,
-                    };
-                    showMainUI();
-                } else {
-                    showMsg('auth-msg', data.msg, false);
-                }
-            }).catch(function(e) {
-                showMsg('auth-msg', '请求失败: ' + e.message, false);
-            }).finally(function() {
-                btn.disabled = false;
-                btn.textContent = isRegisterMode ? '注册' : '登录';
-            });
-        }
-
-        function doLogout() {
-            token = null;
-            currentUser = null;
-            localStorage.removeItem('token');
-            document.getElementById('auth-section').style.display = '';
-            document.getElementById('main-section').style.display = 'none';
-        }
-
-        function checkAuth() {
-            if (!token) {
-                document.getElementById('auth-section').style.display = '';
-                document.getElementById('main-section').style.display = 'none';
-                return;
-            }
-
-            apiFetch('/api/auth/me').then(function(data) {
-                if (data.ok) {
-                    currentUser = data.user;
-                    showMainUI();
-                } else {
-                    doLogout();
-                }
-            }).catch(function() {
-                doLogout();
-            });
-        }
-
-        function showMainUI() {
-            document.getElementById('auth-section').style.display = 'none';
-            document.getElementById('main-section').style.display = '';
-
-            // 更新用户信息
-            document.getElementById('display-username').textContent = currentUser.username;
-            document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
-
-            if (currentUser.is_admin) {
-                document.getElementById('admin-badge').style.display = '';
-                document.getElementById('display-role').textContent = '管理员';
-                document.getElementById('admin-tabs').style.display = '';
-            } else {
-                document.getElementById('admin-badge').style.display = 'none';
-                document.getElementById('display-role').textContent = '普通用户';
-                document.getElementById('admin-tabs').style.display = 'none';
-                document.getElementById('user-content').className = 'tab-content active';
-                document.getElementById('admin-content').className = 'tab-content';
-            }
-
-            // 加载数据
-            loadMyAccounts();
-            loadMyStatus();
-            loadMyNotify();
-            loadMySchedule();
-
-            if (currentUser.is_admin) {
-                loadAdminUsers();
-                loadAdminAccounts();
-                loadAdminStatus();
-                loadAdminSchedules();
-                loadAdminNotify();
-            }
-        }
-
-        // ===== 标签页切换 =====
-        function switchTab(tab) {
-            var tabs = document.querySelectorAll('.tab');
-            tabs.forEach(function(t) { t.className = 'tab'; });
-
-            if (tab === 'user') {
-                tabs[0].className = 'tab active';
-                document.getElementById('user-content').className = 'tab-content active';
-                document.getElementById('admin-content').className = 'tab-content';
-            } else {
-                tabs[1].className = 'tab active';
-                document.getElementById('user-content').className = 'tab-content';
-                document.getElementById('admin-content').className = 'tab-content active';
-            }
-        }
-
-        // ===== Geetest v4 验证码 =====
-        var GEETEST_SCRIPT_URL = 'https://static.geetest.com/v4/gt4.js';
-        var KURO_CAPTCHA_ID = 'ec4aa4174277d822d73f2442a165a2cd';
-
-        var geetestReady = false;
-        var showKuroCaptcha = null;
-        var captchaInitToken = 0;
-
-        function loadGeetestScript(useCacheBust) {
-            return new Promise(function(resolve, reject) {
-                if (typeof window.initGeetest4 === 'function') { resolve(); return; }
-                document.querySelectorAll('script[data-gt4-loader]').forEach(function(s) { s.remove(); });
-                var script = document.createElement('script');
-                script.src = GEETEST_SCRIPT_URL + (useCacheBust ? '?retry=' + Date.now() : '');
-                script.async = true;
-                script.dataset.gt4Loader = 'true';
-                script.onload = function() {
-                    typeof window.initGeetest4 === 'function' ? resolve() : reject(new Error('initGeetest4 unavailable'));
-                };
-                script.onerror = function() { script.remove(); reject(new Error('gt4 load failed')); };
-                document.head.appendChild(script);
-            });
-        }
-
-        function loadGeetestWithRetry() {
-            return loadGeetestScript(false).catch(function() {
-                return new Promise(function(resolve, reject) {
-                    setTimeout(function() { loadGeetestScript(true).then(resolve).catch(reject); }, 2000);
-                });
-            });
-        }
-
-        function initKuroCaptcha(phone, msgId, callback) {
-            var token = ++captchaInitToken;
-            geetestReady = false;
-            showKuroCaptcha = null;
-
-            loadGeetestWithRetry().then(function() {
-                if (token !== captchaInitToken) return;
-                window.initGeetest4({
-                    captchaId: KURO_CAPTCHA_ID,
-                    product: "bind",
-                }, function(captcha) {
-                    if (token !== captchaInitToken) return;
-                    captcha.onReady(function() {
-                        geetestReady = true;
-                        showKuroCaptcha = function() { captcha.showBox(); };
-                        showKuroCaptcha();
-                    }).onSuccess(function() {
-                        var result = captcha.getValidate();
-                        if (!result) { showMsg(msgId, '请完成验证', false); return; }
-                        result.captcha_id = KURO_CAPTCHA_ID;
-                        callback(result);
-                    }).onError(function() {
-                        showMsg(msgId, '验证出错，请重试', false);
-                    });
-                });
-            }).catch(function() {
-                showMsg(msgId, '加载验证组件失败，请检查网络', false);
-            });
-        }
-
-        // ===== 用户：添加账号 =====
-        function onAddPlatformChange() {
-            var platform = document.getElementById('add-platform').value;
-            document.getElementById('add-game').style.display = platform === 'kuro' ? '' : 'none';
-        }
-
-        function sendAddCode() {
-            var platform = document.getElementById('add-platform').value;
-            var phone = document.getElementById('add-phone').value.trim();
-            if (!phone) { showMsg('add-msg', '请输入手机号', false); return; }
-
-            if (platform === 'kuro') {
-                initKuroCaptcha(phone, 'add-msg', function(geeTestData) {
-                    apiFetch('/api/kuro-send-sms', {
-                        method: 'POST',
-                        body: {mobile: phone, geeTestData: JSON.stringify(geeTestData)},
-                    }).then(function(data) {
-                        showMsg('add-msg', data.msg, data.ok);
-                    }).catch(function(e) {
-                        showMsg('add-msg', '请求失败: ' + e.message, false);
-                    });
-                });
-                return;
-            }
-
-            var btn = document.getElementById('btn-send-add-code');
-            btn.disabled = true;
-            btn.textContent = '发送中...';
-
-            apiFetch('/api/send-code', {
-                method: 'POST',
-                body: {platform: platform, phone: phone},
-            }).then(function(data) {
-                showMsg('add-msg', data.msg, data.ok);
-            }).catch(function(e) {
-                showMsg('add-msg', '请求失败: ' + e.message, false);
-            }).finally(function() {
-                btn.disabled = false;
-                btn.textContent = '发送验证码';
-            });
-        }
-
-        function doAddLogin() {
-            var platform = document.getElementById('add-platform').value;
-            var phone = document.getElementById('add-phone').value.trim();
-            var code = document.getElementById('add-code').value.trim();
-            var game = document.getElementById('add-game').value;
-
-            if (!phone || !code) { showMsg('add-msg', '请输入手机号和验证码', false); return; }
-
-            var btn = document.getElementById('btn-add-login');
-            btn.disabled = true;
-            btn.textContent = '登录中...';
-
-            var body = {platform: platform, phone: phone, code: code};
-            if (platform === 'kuro') body.game = game;
-
-            apiFetch('/api/my/login', {
-                method: 'POST',
-                body: body,
-            }).then(function(data) {
-                if (data.ok) {
-                    showMsg('add-msg', '账号添加成功', true);
-                    document.getElementById('add-phone').value = '';
-                    document.getElementById('add-code').value = '';
-                    loadMyAccounts();
-                    loadMyStatus();
-                } else {
-                    showMsg('add-msg', data.msg, false);
-                }
-            }).catch(function(e) {
-                showMsg('add-msg', '请求失败: ' + e.message, false);
-            }).finally(function() {
-                btn.disabled = false;
-                btn.textContent = '登录并添加';
-            });
-        }
-
-        // ===== 用户：我的账号 =====
-        function loadMyAccounts() {
-            apiFetch('/api/my/accounts').then(function(data) {
-                var el = document.getElementById('my-account-list');
-
-                if (data.length === 0) {
-                    el.innerHTML = '<div class="empty">暂无账号，请先添加</div>';
-                    return;
-                }
-
-                var html = '';
-                data.forEach(function(acc) {
-                    var isKuro = acc.platform === 'kuro';
-                    var platformClass = isKuro ? 'platform-kuro' : 'platform-tajiduo';
-                    var platformLabel = isKuro ? '库洛' : '塔吉多';
-                    var uid = isKuro ? acc.uid : acc.center_uid;
-                    var detail = isKuro ? (acc.game_label + ' | ' + acc.cookie_preview) : ('设备: ' + (acc.dev_code || '-'));
-
-                    html += '<div class="account-item">' +
-                        '<div class="account-info">' +
-                            '<span class="account-platform ' + platformClass + '">' + platformLabel + '</span>' +
-                            '<span class="account-uid">' + escapeHtml(uid) + '</span>' +
-                            '<div class="account-detail">' + escapeHtml(detail) + '</div>' +
-                        '</div>' +
-                        '<button class="btn-danger btn-sm" onclick="deleteMyAccount(' + acc.id + ')">删除</button>' +
-                    '</div>';
-                });
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('my-account-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        function deleteMyAccount(id) {
-            if (!confirm('确定删除该账号？')) return;
-            apiFetch('/api/my/accounts/' + id, {method: 'DELETE'}).then(function(data) {
-                if (data.ok) { loadMyAccounts(); }
-                else { alert(data.msg); }
-            }).catch(function(e) {
-                alert('删除失败: ' + e.message);
-            });
-        }
-
-        // ===== 用户：我的签到状态 =====
-        function loadMyStatus() {
-            apiFetch('/api/my/status').then(function(data) {
-                var el = document.getElementById('my-status-list');
-                var records = data.records || {};
-                var keys = Object.keys(records);
-
-                if (keys.length === 0) {
-                    el.innerHTML = '<div class="empty">' + data.date + ' 暂无签到记录</div>';
-                    return;
-                }
-
-                var kindLabels = {
-                    'game_sign': '游戏签到', 'bbs_sign': 'BBS签到', 'bbs_detail': '浏览帖子',
-                    'bbs_like': '点赞帖子', 'bbs_share': '分享帖子', 'app_sign': '塔吉多签到',
-                    'task_browse_post_c': '浏览帖子', 'task_like_post_c': '点赞帖子', 'task_share': '分享帖子',
-                };
-
-                var html = '';
-                keys.forEach(function(refId) {
-                    var items = records[refId];
-                    html += '<div class="status-group"><div class="status-group-title">' + escapeHtml(refId) + '</div>';
-                    items.forEach(function(item) {
-                        var label = kindLabels[item.kind] || item.kind;
-                        html += '<div class="status-item"><span class="status-kind">' + escapeHtml(label) + '</span><span class="status-icon status-ok">✓</span></div>';
-                    });
-                    html += '</div>';
-                });
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('my-status-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        // ===== 用户：执行签到 =====
-        function doMySign() {
-            var btn = document.getElementById('btn-my-sign');
-            var logEl = document.getElementById('my-sign-log');
-            btn.disabled = true;
-            btn.textContent = '签到中...';
-            logEl.innerHTML = '';
-            logEl.classList.add('show');
-
-            apiFetch('/api/my/sign', {method: 'POST', stream: true}).then(function(resp) {
-                var reader = resp.body.getReader();
-                var decoder = new TextDecoder();
-                var buffer = '';
-
-                function read() {
-                    return reader.read().then(function(result) {
-                        if (result.done) return;
-                        buffer += decoder.decode(result.value, {stream: true});
-                        var lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (var i = 0; i < lines.length; i++) {
-                            var line = lines[i];
-                            if (line.indexOf('data: ') === 0) {
-                                try {
-                                    var data = JSON.parse(line.slice(6));
-                                    var cls = data.type === 'error' ? 'log-error' :
-                                               data.type === 'skip' ? 'log-skip' :
-                                               data.type === 'progress' ? 'log-progress' :
-                                               data.type === 'done' ? 'log-done' : '';
-                                    logEl.innerHTML += '<div class="' + cls + '">' + escapeHtml(data.msg) + '</div>';
-                                    logEl.scrollTop = logEl.scrollHeight;
-                                    if (data.done) { loadMyStatus(); }
-                                } catch(e) {}
-                            }
-                        }
-                        return read();
-                    });
-                }
-                return read();
-            }).catch(function(e) {
-                logEl.innerHTML += '<div class="log-error">请求失败: ' + escapeHtml(e.message) + '</div>';
-            }).finally(function() {
-                btn.disabled = false;
-                btn.textContent = '开始签到';
-            });
-        }
-
-        // ===== 用户：推送配置 =====
-        function loadMyNotify() {
-            apiFetch('/api/my/notify').then(function(data) {
-                var sckey = data.serverchan_sckey || '';
-                var botToken = data.telegram_bot_token || '';
-                var chatId = data.telegram_chat_id || '';
-
-                if (sckey && !sckey.includes('...')) {
-                    document.getElementById('my-notify-sckey').value = sckey;
-                }
-                if (botToken && !botToken.includes('...')) {
-                    document.getElementById('my-notify-tg-token').value = botToken;
-                }
-                if (chatId) {
-                    document.getElementById('my-notify-tg-chat').value = chatId;
-                }
-
-                var services = [];
-                if (sckey) services.push('Server酱');
-                if (botToken) services.push('Telegram');
-                updateMyNotifyStatus(data.enabled, services.join(' + '));
-            }).catch(function() {});
-        }
-
-        function updateMyNotifyStatus(enabled, services) {
-            var statusEl = document.getElementById('my-notify-status');
-            var toggleBtn = document.getElementById('btn-toggle-my-notify');
-            var dot = statusEl.querySelector('.status-dot');
-            var textEl = statusEl.querySelector('.status-text');
-            var detailEl = statusEl.querySelector('.status-detail');
-
-            if (enabled) {
-                dot.className = 'status-dot on';
-                textEl.textContent = '推送通知已启用';
-                toggleBtn.textContent = '关闭推送';
-                toggleBtn.className = 'btn-danger';
-                if (services) detailEl.textContent = '当前服务: ' + services;
-            } else {
-                dot.className = 'status-dot off';
-                textEl.textContent = '推送通知未启用';
-                toggleBtn.textContent = '启用推送';
-                toggleBtn.className = 'btn-warning';
-                detailEl.textContent = '签到完成后推送结果';
-            }
-        }
-
-        function saveMyNotify() {
-            var sckey = document.getElementById('my-notify-sckey').value.trim();
-            var tgToken = document.getElementById('my-notify-tg-token').value.trim();
-            var tgChat = document.getElementById('my-notify-tg-chat').value.trim();
-
-            apiFetch('/api/my/notify').then(function(current) {
-                return apiFetch('/api/my/notify', {
-                    method: 'POST',
-                    body: {
-                        enabled: current.enabled,
-                        serverchan_sckey: sckey,
-                        telegram_bot_token: tgToken,
-                        telegram_chat_id: tgChat,
-                    },
-                });
-            }).then(function(data) {
-                showMsg('my-notify-msg', data.msg, data.ok);
-                if (data.ok) loadMyNotify();
-            }).catch(function(e) {
-                showMsg('my-notify-msg', '保存失败: ' + e.message, false);
-            });
-        }
-
-        function toggleMyNotify() {
-            apiFetch('/api/my/notify').then(function(data) {
-                return apiFetch('/api/my/notify', {
-                    method: 'POST',
-                    body: {enabled: !data.enabled},
-                });
-            }).then(function(data) {
-                showMsg('my-notify-msg', data.msg, data.ok);
-                if (data.ok) loadMyNotify();
-            }).catch(function(e) {
-                showMsg('my-notify-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        function testMyNotify() {
-            apiFetch('/api/my/notify/test', {method: 'POST'}).then(function(data) {
-                showMsg('my-notify-msg', data.msg, data.ok);
-            }).catch(function(e) {
-                showMsg('my-notify-msg', '测试失败: ' + e.message, false);
-            });
-        }
-
-        // ===== 用户：我的定时签到 =====
-        function loadMySchedule() {
-            apiFetch('/api/my/schedule').then(function(data) {
-                document.getElementById('my-sched-time').value = data.time || '06:00';
-                updateMyScheduleStatus(data.enabled, data.time);
-            }).catch(function() {});
-        }
-
-        function updateMyScheduleStatus(enabled, time) {
-            var statusEl = document.getElementById('my-schedule-status');
-            var toggleBtn = document.getElementById('btn-toggle-my-sched');
-            var dot = statusEl.querySelector('.status-dot');
-            var textEl = statusEl.querySelector('.status-text');
-            var detailEl = statusEl.querySelector('.status-detail');
-
-            if (enabled) {
-                dot.className = 'status-dot on';
-                textEl.textContent = '定时签到已启用';
-                detailEl.textContent = '每天 ' + (time || '06:00') + ' 自动执行签到';
-                toggleBtn.textContent = '关闭定时';
-                toggleBtn.className = 'btn-danger';
-            } else {
-                dot.className = 'status-dot off';
-                textEl.textContent = '定时签到未启用';
-                detailEl.textContent = '点击下方按钮开启定时签到';
-                toggleBtn.textContent = '启用定时';
-                toggleBtn.className = 'btn-warning';
-            }
-        }
-
-        function toggleMySchedule() {
-            apiFetch('/api/my/schedule').then(function(data) {
-                var time = document.getElementById('my-sched-time').value || data.time;
-                return apiFetch('/api/my/schedule', {
-                    method: 'PUT',
-                    body: {enabled: !data.enabled, time: time},
-                });
-            }).then(function(data) {
-                showMsg('my-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadMySchedule();
-            }).catch(function(e) {
-                showMsg('my-schedule-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        function saveMySchedule() {
-            var time = document.getElementById('my-sched-time').value;
-            apiFetch('/api/my/schedule').then(function(data) {
-                return apiFetch('/api/my/schedule', {
-                    method: 'PUT',
-                    body: {enabled: data.enabled, time: time},
-                });
-            }).then(function(data) {
-                showMsg('my-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadMySchedule();
-            }).catch(function(e) {
-                showMsg('my-schedule-msg', '保存失败: ' + e.message, false);
-            });
-        }
-
-        // ===== 管理员：用户管理 =====
-        function loadAdminUsers() {
-            apiFetch('/api/admin/users').then(function(data) {
-                var el = document.getElementById('admin-user-list');
-                if (data.length === 0) {
-                    el.innerHTML = '<div class="empty">暂无用户</div>';
-                    return;
-                }
-
-                var html = '<table class="user-table"><thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead><tbody>';
-                data.forEach(function(user) {
-                    html += '<tr>' +
-                        '<td>' + user.id + '</td>' +
-                        '<td>' + escapeHtml(user.username) + (user.is_admin ? ' <span class="admin-badge">管理员</span>' : '') + '</td>' +
-                        '<td>' + (user.is_admin ? '管理员' : '用户') + '</td>' +
-                        '<td>' + (user.created_at || '-') + '</td>' +
-                        '<td>' + (user.is_admin ? '-' : '<button class="btn-danger btn-sm" onclick="deleteAdminUser(' + user.id + ')">删除</button>') + '</td>' +
-                    '</tr>';
-                });
-                html += '</tbody></table>';
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('admin-user-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        function deleteAdminUser(userId) {
-            if (!confirm('确定删除该用户？')) return;
-            apiFetch('/api/admin/users/' + userId, {method: 'DELETE'}).then(function(data) {
-                if (data.ok) {
-                    loadAdminUsers();
-                    loadAdminAccounts();
-                    loadAdminStatus();
-                } else {
-                    alert(data.msg);
-                }
-            }).catch(function(e) {
-                alert('删除失败: ' + e.message);
-            });
-        }
-
-        // ===== 管理员：全部账号 =====
-        function loadAdminAccounts() {
-            apiFetch('/api/admin/accounts').then(function(data) {
-                var el = document.getElementById('admin-account-list');
-                if (data.length === 0) {
-                    el.innerHTML = '<div class="empty">暂无账号</div>';
-                    return;
-                }
-
-                var html = '';
-                data.forEach(function(acc) {
-                    var isKuro = acc.platform === 'kuro';
-                    var platformClass = isKuro ? 'platform-kuro' : 'platform-tajiduo';
-                    var platformLabel = isKuro ? '库洛' : '塔吉多';
-                    var uid = isKuro ? acc.uid : acc.center_uid;
-                    var detail = isKuro ? (acc.game_label + ' | ' + acc.cookie_preview) : ('设备: ' + (acc.dev_code || '-'));
-
-                    html += '<div class="account-item">' +
-                        '<div class="account-info">' +
-                            '<span class="account-platform ' + platformClass + '">' + platformLabel + '</span>' +
-                            '<span class="account-uid">' + escapeHtml(uid) + '</span>' +
-                            '<div class="account-detail">用户: ' + escapeHtml(acc.username) + ' | ' + escapeHtml(detail) + '</div>' +
-                        '</div>' +
-                        '<button class="btn-danger btn-sm" onclick="deleteAdminAccount(' + acc.user_id + ', ' + acc.id + ')">删除</button>' +
-                    '</div>';
-                });
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('admin-account-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        function deleteAdminAccount(userId, accountId) {
-            if (!confirm('确定删除该账号？')) return;
-            apiFetch('/api/admin/users/' + userId + '/accounts/' + accountId, {method: 'DELETE'}).then(function(data) {
-                if (data.ok) {
-                    loadAdminAccounts();
-                    loadAdminStatus();
-                } else {
-                    alert(data.msg);
-                }
-            }).catch(function(e) {
-                alert('删除失败: ' + e.message);
-            });
-        }
-
-        // ===== 管理员：全部签到状态 =====
-        function loadAdminStatus() {
-            apiFetch('/api/admin/status').then(function(data) {
-                var el = document.getElementById('admin-status-list');
-                var users = data.users || {};
-                var usernames = Object.keys(users);
-
-                if (usernames.length === 0) {
-                    el.innerHTML = '<div class="empty">' + data.date + ' 暂无签到记录</div>';
-                    return;
-                }
-
-                var kindLabels = {
-                    'game_sign': '游戏签到', 'bbs_sign': 'BBS签到', 'bbs_detail': '浏览帖子',
-                    'bbs_like': '点赞帖子', 'bbs_share': '分享帖子', 'app_sign': '塔吉多签到',
-                    'task_browse_post_c': '浏览帖子', 'task_like_post_c': '点赞帖子', 'task_share': '分享帖子',
-                };
-
-                var html = '';
-                usernames.forEach(function(username) {
-                    var userData = users[username];
-                    var records = userData.records || {};
-                    var keys = Object.keys(records);
-
-                    html += '<div class="status-group"><div class="status-group-title">' + escapeHtml(username) + '</div>';
-                    if (keys.length === 0) {
-                        html += '<div class="status-item"><span class="status-kind">暂无记录</span></div>';
-                    } else {
-                        keys.forEach(function(refId) {
-                            var items = records[refId];
-                            items.forEach(function(item) {
-                                var label = kindLabels[item.kind] || item.kind;
-                                html += '<div class="status-item"><span class="status-kind">' + escapeHtml(refId) + ' - ' + escapeHtml(label) + '</span><span class="status-icon status-ok">✓</span></div>';
-                            });
-                        });
-                    }
-                    html += '</div>';
-                });
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('admin-status-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        // ===== 管理员：执行全部签到 =====
-        function doAdminSign() {
-            var btn = document.getElementById('btn-admin-sign');
-            var logEl = document.getElementById('admin-sign-log');
-            btn.disabled = true;
-            btn.textContent = '签到中...';
-            logEl.innerHTML = '';
-            logEl.classList.add('show');
-
-            apiFetch('/api/admin/sign', {method: 'POST', stream: true}).then(function(resp) {
-                var reader = resp.body.getReader();
-                var decoder = new TextDecoder();
-                var buffer = '';
-
-                function read() {
-                    return reader.read().then(function(result) {
-                        if (result.done) return;
-                        buffer += decoder.decode(result.value, {stream: true});
-                        var lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-
-                        for (var i = 0; i < lines.length; i++) {
-                            var line = lines[i];
-                            if (line.indexOf('data: ') === 0) {
-                                try {
-                                    var data = JSON.parse(line.slice(6));
-                                    var cls = data.type === 'error' ? 'log-error' :
-                                               data.type === 'skip' ? 'log-skip' :
-                                               data.type === 'progress' ? 'log-progress' :
-                                               data.type === 'done' ? 'log-done' : '';
-                                    logEl.innerHTML += '<div class="' + cls + '">' + escapeHtml(data.msg) + '</div>';
-                                    logEl.scrollTop = logEl.scrollHeight;
-                                    if (data.done) { loadAdminStatus(); loadMyStatus(); }
-                                } catch(e) {}
-                            }
-                        }
-                        return read();
-                    });
-                }
-                return read();
-            }).catch(function(e) {
-                logEl.innerHTML += '<div class="log-error">请求失败: ' + escapeHtml(e.message) + '</div>';
-            }).finally(function() {
-                btn.disabled = false;
-                btn.textContent = '执行全部签到';
-            });
-        }
-
-        // ===== 管理员：用户定时管理 =====
-        function loadAdminSchedules() {
-            apiFetch('/api/admin/schedules').then(function(data) {
-                var el = document.getElementById('admin-schedule-list');
-                if (data.length === 0) {
-                    el.innerHTML = '<div class="empty">暂无用户</div>';
-                    return;
-                }
-
-                var html = '<table class="user-table"><thead><tr><th>用户名</th><th>定时状态</th><th>签到时间</th><th>操作</th></tr></thead><tbody>';
-                data.forEach(function(s) {
-                    var statusLabel = s.enabled ? '<span style="color:#52c41a">已启用</span>' : '<span style="color:#999">未启用</span>';
-                    html += '<tr>' +
-                        '<td>' + escapeHtml(s.username) + '</td>' +
-                        '<td>' + statusLabel + '</td>' +
-                        '<td><input type="time" value="' + (s.time || '06:00') + '" ' +
-                            'id="sched-time-' + s.user_id + '" style="width:110px;padding:4px 8px;font-size:13px;" ' +
-                            'onchange="updateSingleSchedule(' + s.user_id + ')"></td>' +
-                        '<td>' +
-                            '<button class="btn-sm ' + (s.enabled ? 'btn-danger' : 'btn-success') + '" ' +
-                                'onclick="toggleUserSchedule(' + s.user_id + ', ' + !s.enabled + ')">' +
-                                (s.enabled ? '关闭' : '启用') + '</button>' +
-                        '</td>' +
-                    '</tr>';
-                });
-                html += '</tbody></table>';
-                el.innerHTML = html;
-            }).catch(function() {
-                document.getElementById('admin-schedule-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        function updateSingleSchedule(userId) {
-            var timeInput = document.getElementById('sched-time-' + userId);
-            if (!timeInput) return;
-            var time = timeInput.value;
-
-            // 先获取当前启用状态
-            apiFetch('/api/admin/schedules').then(function(data) {
-                var user = data.find(function(s) { return s.user_id === userId; });
-                var enabled = user ? user.enabled : false;
-                return apiFetch('/api/admin/schedules/' + userId, {
-                    method: 'PUT',
-                    body: {enabled: enabled, time: time},
-                });
-            }).then(function(data) {
-                showMsg('admin-schedule-msg', data.msg, data.ok);
-            }).catch(function(e) {
-                showMsg('admin-schedule-msg', '保存失败: ' + e.message, false);
-            });
-        }
-
-        function toggleUserSchedule(userId, newEnabled) {
-            var timeInput = document.getElementById('sched-time-' + userId);
-            var time = timeInput ? timeInput.value : '06:00';
-
-            apiFetch('/api/admin/schedules/' + userId, {
-                method: 'PUT',
-                body: {enabled: newEnabled, time: time},
-            }).then(function(data) {
-                showMsg('admin-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadAdminSchedules();
-            }).catch(function(e) {
-                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        function batchUpdateSchedules() {
-            var time = document.getElementById('batch-sched-time').value;
-            if (!time) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
-
-            if (!confirm('确定将所有用户的定时签到时间设为 ' + time + ' 并启用？')) return;
-
-            apiFetch('/api/admin/schedules/batch', {
-                method: 'POST',
-                body: {enabled: true, time: time},
-            }).then(function(data) {
-                showMsg('admin-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadAdminSchedules();
-            }).catch(function(e) {
-                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        function batchEnableSchedules() {
-            var time = document.getElementById('batch-sched-time').value;
-            if (!time) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
-
-            if (!confirm('确定开启所有用户的定时签到？时间: ' + time)) return;
-
-            apiFetch('/api/admin/schedules/batch', {
-                method: 'POST',
-                body: {enabled: true, time: time},
-            }).then(function(data) {
-                showMsg('admin-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadAdminSchedules();
-            }).catch(function(e) {
-                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        function batchDisableSchedules() {
-            if (!confirm('确定关闭所有用户的定时签到？')) return;
-
-            apiFetch('/api/admin/schedules/batch', {
-                method: 'POST',
-                body: {enabled: false, time: '06:00'},
-            }).then(function(data) {
-                showMsg('admin-schedule-msg', data.msg, data.ok);
-                if (data.ok) loadAdminSchedules();
-            }).catch(function(e) {
-                showMsg('admin-schedule-msg', '操作失败: ' + e.message, false);
-            });
-        }
-
-        // ===== 管理员：用户推送管理 =====
-        function loadAdminNotify() {
-            apiFetch('/api/admin/users').then(function(users) {
-                var el = document.getElementById('admin-notify-list');
-                if (users.length === 0) {
-                    el.innerHTML = '<div class="empty">暂无用户</div>';
-                    return;
-                }
-
-                var html = '<table class="user-table"><thead><tr><th>用户名</th><th>推送状态</th><th>操作</th></tr></thead><tbody>';
-                users.forEach(function(user) {
-                    html += '<tr>' +
-                        '<td>' + escapeHtml(user.username) + '</td>' +
-                        '<td id="notify-status-' + user.id + '">加载中...</td>' +
-                        '<td>' +
-                            '<button class="btn-sm btn-outline" onclick="showNotifyEdit(' + user.id + ', \'' + escapeHtml(user.username) + '\')">编辑</button>' +
-                        '</td>' +
-                    '</tr>';
-                });
-                html += '</tbody></table>';
-                el.innerHTML = html;
-
-                // 加载每个用户的推送状态
-                users.forEach(function(user) {
-                    apiFetch('/api/admin/users/' + user.id + '/notify').then(function(data) {
-                        var statusEl = document.getElementById('notify-status-' + user.id);
-                        if (statusEl) {
-                            var services = [];
-                            if (data.serverchan_sckey) services.push('Server酱');
-                            if (data.telegram_bot_token) services.push('Telegram');
-                            statusEl.innerHTML = data.enabled ?
-                                '<span style="color:#52c41a">已启用</span>' + (services.length ? ' (' + services.join('+') + ')' : '') :
-                                '<span style="color:#999">未启用</span>';
-                        }
-                    });
-                });
-            }).catch(function() {
-                document.getElementById('admin-notify-list').innerHTML = '<div class="empty">加载失败</div>';
-            });
-        }
-
-        function showNotifyEdit(userId, username) {
-            apiFetch('/api/admin/users/' + userId + '/notify').then(function(data) {
-                var sckey = data.serverchan_sckey || '';
-                var tgToken = data.telegram_bot_token || '';
-                var tgChat = data.telegram_chat_id || '';
-
-                var msg = '编辑「' + username + '」的推送配置\n\n' +
-                    '当前状态: ' + (data.enabled ? '已启用' : '未启用') + '\n' +
-                    'Server酱 SCKEY: ' + (sckey ? sckey.substring(0, 8) + '...' : '(空)') + '\n' +
-                    'Telegram Token: ' + (tgToken ? tgToken.substring(0, 8) + '...' : '(空)') + '\n' +
-                    'Telegram Chat ID: ' + (tgChat || '(空)');
-
-                alert(msg);
-            });
-        }
-
-        // ===== 更新 =====
-        function doUpdate() {
-            var btn = document.getElementById('btn-update');
-            var dot = document.getElementById('update-dot');
-            var textEl = document.getElementById('update-status-text');
-            var detailEl = document.getElementById('update-status-detail');
-
-            btn.disabled = true;
-            btn.textContent = '更新中...';
-            dot.className = 'status-dot';
-            textEl.textContent = '正在从 GitHub 拉取更新...';
-            detailEl.textContent = '请稍候，完成后服务会自动重启';
-
-            apiFetch('/api/update', {method: 'POST'}).then(function(data) {
-                showMsg('update-msg', data.msg, data.ok);
-                if (data.ok) {
-                    dot.className = 'status-dot on';
-                    textEl.textContent = '更新完成';
-                    detailEl.textContent = data.msg.split('\n')[0];
-                    setTimeout(function() { location.reload(); }, 8000);
-                } else {
-                    dot.className = 'status-dot off';
-                    textEl.textContent = '更新失败';
-                    detailEl.textContent = data.msg;
-                }
-                btn.disabled = false;
-                btn.textContent = '检查更新';
-            }).catch(function(e) {
-                showMsg('update-msg', '更新失败: ' + e.message, false);
-                dot.className = 'status-dot off';
-                textEl.textContent = '更新失败';
-                detailEl.textContent = e.message;
-                btn.disabled = false;
-                btn.textContent = '检查更新';
-            });
-        }
-
-        // ===== 初始化 =====
-        document.addEventListener('DOMContentLoaded', function() {
-            onAddPlatformChange();
-            checkAuth();
+    </div>
+</div>
+
+<script>
+var token = localStorage.getItem('token');
+var currentUser = null;
+var isRegisterMode = false;
+
+// ── Helpers ──
+function $(id) { return document.getElementById(id); }
+function escapeHtml(t) {
+    var d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+}
+function showMsg(id, text, ok) {
+    var el = $(id);
+    el.textContent = text;
+    el.className = 'msg show ' + (ok ? 'msg-ok' : 'msg-err');
+    setTimeout(function() { el.className = 'msg'; }, 5000);
+}
+
+function apiFetch(url, options) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(options.body);
+    }
+    return fetch(url, options).then(function(r) {
+        if (r.status === 401) { doLogout(); throw new Error('登录已过期'); }
+        if (options.stream) return r;
+        return r.json();
+    });
+}
+
+// ── Auth ──
+function toggleAuthMode() {
+    isRegisterMode = !isRegisterMode;
+    $('auth-title').textContent = isRegisterMode ? '注册' : '登录';
+    $('btn-auth').textContent = isRegisterMode ? '注册' : '登录';
+    $('btn-toggle-auth').textContent = isRegisterMode ? '已有账号？登录' : '没有账号？注册';
+}
+
+function doAuth() {
+    var username = $('auth-username').value.trim();
+    var password = $('auth-password').value;
+    if (!username || !password) { showMsg('auth-msg', '请输入用户名和密码', false); return; }
+
+    var ep = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+    var btn = $('btn-auth');
+    btn.disabled = true;
+    btn.textContent = isRegisterMode ? '注册中...' : '登录中...';
+
+    fetch(ep, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: username, password: password}),
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            currentUser = { id: data.user ? data.user.id : null, username: data.username, is_admin: data.is_admin || false };
+            showMainUI();
+        } else { showMsg('auth-msg', data.msg, false); }
+    }).catch(function(e) { showMsg('auth-msg', '请求失败: ' + e.message, false); })
+    .finally(function() { btn.disabled = false; btn.textContent = isRegisterMode ? '注册' : '登录'; });
+}
+
+function doLogout() {
+    token = null; currentUser = null;
+    localStorage.removeItem('token');
+    $('auth-section').style.display = '';
+    $('main-section').style.display = 'none';
+}
+
+function checkAuth() {
+    if (!token) { $('auth-section').style.display = ''; $('main-section').style.display = 'none'; return; }
+    apiFetch('/api/auth/me').then(function(data) {
+        if (data.ok) { currentUser = data.user; showMainUI(); }
+        else { doLogout(); }
+    }).catch(function() { doLogout(); });
+}
+
+function showMainUI() {
+    $('auth-section').style.display = 'none';
+    $('main-section').style.display = '';
+    $('display-username').textContent = currentUser.username;
+    $('user-avatar').textContent = currentUser.username[0].toUpperCase();
+
+    if (currentUser.is_admin) {
+        $('admin-badge').style.display = '';
+        $('display-role').textContent = '管理员';
+        $('admin-tabs').style.display = '';
+    } else {
+        $('admin-badge').style.display = 'none';
+        $('display-role').textContent = '普通用户';
+        $('admin-tabs').style.display = 'none';
+        $('user-content').className = 'tab-content active';
+        $('admin-content').className = 'tab-content';
+    }
+
+    loadMyAccounts();
+    loadMyStatus();
+    loadMyNotify();
+    loadMySchedule();
+    if (currentUser.is_admin) {
+        loadAdminUsers();
+        loadAdminAccounts();
+        loadAdminStatus();
+        loadAdminSchedules();
+        loadAdminNotify();
+    }
+}
+
+function switchTab(tab) {
+    var tabs = document.querySelectorAll('#admin-tabs .tab');
+    tabs.forEach(function(t) { t.className = 'tab'; });
+    if (tab === 'user') {
+        tabs[0].className = 'tab active';
+        $('user-content').className = 'tab-content active';
+        $('admin-content').className = 'tab-content';
+    } else {
+        tabs[1].className = 'tab active';
+        $('user-content').className = 'tab-content';
+        $('admin-content').className = 'tab-content active';
+    }
+}
+
+// ── Geetest ──
+var GEETEST_SCRIPT_URL = 'https://static.geetest.com/v4/gt4.js';
+var KURO_CAPTCHA_ID = 'ec4aa4174277d822d73f2442a165a2cd';
+var geetestReady = false;
+var showKuroCaptcha = null;
+var captchaInitToken = 0;
+
+function loadGeetestScript(retry) {
+    return new Promise(function(resolve, reject) {
+        if (typeof window.initGeetest4 === 'function') { resolve(); return; }
+        document.querySelectorAll('script[data-gt4-loader]').forEach(function(s) { s.remove(); });
+        var s = document.createElement('script');
+        s.src = retry ? GEETEST_SCRIPT_URL + '?retry=' + Date.now() : GEETEST_SCRIPT_URL;
+        s.async = true;
+        s.dataset.gt4Loader = 'true';
+        s.onload = function() { typeof window.initGeetest4 === 'function' ? resolve() : reject(new Error('initGeetest4 unavailable')); };
+        s.onerror = function() { s.remove(); reject(new Error('gt4 load failed')); };
+        document.head.appendChild(s);
+    });
+}
+function loadGeetestWithRetry() {
+    return loadGeetestScript(false).catch(function() {
+        return new Promise(function(resolve, reject) {
+            setTimeout(function() { loadGeetestScript(true).then(resolve).catch(reject); }, 2000);
         });
-    </script>
+    });
+}
+function initKuroCaptcha(phone, msgId, cb) {
+    var token = ++captchaInitToken;
+    geetestReady = false; showKuroCaptcha = null;
+    loadGeetestWithRetry().then(function() {
+        if (token !== captchaInitToken) return;
+        window.initGeetest4({
+            product: 'bind',
+            captchaId: KURO_CAPTCHA_ID,
+            riskType: 'slide',
+            language: 'zho',
+            onReady: function(c) {
+                if (token !== captchaInitToken) return;
+                showKuroCaptcha = function() { c.showCaptcha(); };
+                geetestReady = true;
+                cb();
+            },
+            onSuccess: function(e) {
+                showKuroCaptcha = null;
+                sendKuroSms(phone, msgId, {geetest_challenge: e.captcha_output, geetest_validate: e.gen_time, geetest_seccode: e.lot_number});
+            },
+            onError: function(err) {
+                showKuroCaptcha = null;
+                showMsg('add-msg', '验证码加载失败: ' + (err.msg || err.errMsg || '请重试'), false);
+            },
+        });
+    }).catch(function(err) {
+        showMsg('add-msg', '验证码SDK加载失败: ' + err.message, false);
+    });
+}
+
+var kuroSmsToken = '';
+var kuroLoginToken = '';
+function sendKuroSms(phone, msgId, captcha) {
+    apiFetch('/api/add/kuro/login', {
+        method: 'POST',
+        body: {phone: phone, step: 'sms', msg_id: msgId, captcha: captcha},
+    }).then(function(data) {
+        if (data.ok) {
+            kuroLoginToken = data.login_token || '';
+            showMsg('add-msg', '验证码已发送', true);
+        } else {
+            if (data.need_captcha) { kuroSmsToken = data.sms_token || ''; initKuroCaptcha(phone, data.msg_id, function() { if (showKuroCaptcha) showKuroCaptcha(); }); }
+            showMsg('add-msg', data.msg || '发送失败', data.ok);
+        }
+    }).catch(function(e) { showMsg('add-msg', '请求失败: ' + e.message, false); });
+}
+
+function sendAddCode() {
+    var phone = $('add-phone').value.trim();
+    if (!phone || phone.length !== 11) { showMsg('add-msg', '请输入正确的手机号', false); return; }
+
+    var platform = $('add-platform').value;
+    var btn = $('btn-send-add-code');
+    btn.disabled = true; btn.textContent = '发送中...';
+
+    if (platform === 'kuro') {
+        initKuroCaptcha(phone, '', function() {
+            if (showKuroCaptcha) showKuroCaptcha();
+            btn.disabled = false; btn.textContent = '发送验证码';
+        });
+    } else {
+        apiFetch('/api/add/tajiduo/sms', {method: 'POST', body: {phone: phone}}).then(function(data) {
+            showMsg('add-msg', data.msg, data.ok);
+        }).catch(function(e) { showMsg('add-msg', '请求失败: ' + e.message, false); })
+        .finally(function() { btn.disabled = false; btn.textContent = '发送验证码'; });
+    }
+}
+
+function doAddLogin() {
+    var platform = $('add-platform').value;
+    var game = $('add-game').value;
+    var phone = $('add-phone').value.trim();
+    var code = $('add-code').value.trim();
+    if (!phone || !code) { showMsg('add-msg', '请输入手机号和验证码', false); return; }
+
+    var btn = $('btn-add-login');
+    btn.disabled = true; btn.textContent = '登录中...';
+
+    if (platform === 'kuro') {
+        if (!kuroLoginToken) { showMsg('add-msg', '请先发送验证码', false); btn.disabled = false; btn.textContent = '登录并添加'; return; }
+        apiFetch('/api/add/kuro/login', {
+            method: 'POST',
+            body: {phone: phone, step: 'verify', code: code, game: game, login_token: kuroLoginToken},
+        }).then(function(data) {
+            showMsg('add-msg', data.msg, data.ok);
+            if (data.ok) { loadMyAccounts(); }
+        }).catch(function(e) { showMsg('add-msg', '请求失败: ' + e.message, false); })
+        .finally(function() { btn.disabled = false; btn.textContent = '登录并添加'; kuroLoginToken = ''; });
+    } else {
+        apiFetch('/api/add/tajiduo/login', {method: 'POST', body: {phone: phone, code: code}}).then(function(data) {
+            showMsg('add-msg', data.msg, data.ok);
+            if (data.ok) { loadMyAccounts(); }
+        }).catch(function(e) { showMsg('add-msg', '请求失败: ' + e.message, false); })
+        .finally(function() { btn.disabled = false; btn.textContent = '登录并添加'; });
+    }
+}
+
+function onAddPlatformChange() {
+    var v = $('add-platform').value;
+    var gameEl = $('add-game');
+    gameEl.innerHTML = '';
+    if (v === 'kuro') {
+        gameEl.appendChild(createOption('waves', '鸣潮'));
+        gameEl.appendChild(createOption('pgr', '战双'));
+    } else {
+        gameEl.appendChild(createOption('tajiduo', '全部游戏'));
+    }
+}
+function createOption(value, text) { var o = document.createElement('option'); o.value = value; o.textContent = text; return o; }
+
+// ── My Accounts ──
+function loadMyAccounts() {
+    apiFetch('/api/my/accounts').then(function(data) {
+        var el = $('my-account-list');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">暂无账号</div>'; return; }
+        var h = '';
+        data.forEach(function(a) {
+            var tag = a.platform === 'kuro' ? 'tag-kuro' : 'tag-tajiduo';
+            var platformLabel = a.platform === 'kuro' ? '库洛' : '塔吉多';
+            var uidText = a.platform === 'kuro' ? (a.uid || '?') : (a.center_uid ? a.center_uid.substring(0, 16) + '...' : '?');
+            var detail = a.platform === 'kuro' ? ('游戏: ' + (a.game || '?')) : ('dev: ' + (a.dev_code ? a.dev_code.substring(0, 8) + '...' : '?'));
+            h += '<div class="account-item">' +
+                '<div><span class="platform-tag ' + tag + '">' + platformLabel + '</span><span class="account-uid">' + escapeHtml(uidText) + '</span><div class="account-detail">' + escapeHtml(detail) + '</div></div>' +
+                '<button class="btn-outline btn-xs" onclick="deleteMyAccount(' + a.id + ')">删除</button>' +
+            '</div>';
+        });
+        el.innerHTML = h;
+    }).catch(function() { $('my-account-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function deleteMyAccount(id) {
+    if (!confirm('确定删除该账号？')) return;
+    apiFetch('/api/my/accounts/' + id, {method: 'DELETE'}).then(function(data) {
+        showMsg('add-msg', data.msg, data.ok);
+        if (data.ok) loadMyAccounts();
+    }).catch(function(e) { showMsg('add-msg', '删除失败: ' + e.message, false); });
+}
+
+// ── My Status ──
+var KIND_LABELS = {
+    'game_sign': '游戏签到', 'bbs_sign': 'BBS签到', 'bbs_detail': '浏览帖子',
+    'bbs_like': '点赞帖子', 'bbs_share': '分享帖子', 'app_sign': '塔吉多签到',
+    'task_browse_post_c': '浏览帖子', 'task_like_post_c': '点赞帖子', 'task_share': '分享帖子',
+};
+
+function loadMyStatus() {
+    apiFetch('/api/my/status').then(function(data) {
+        var el = $('my-status-list');
+        $('status-date').textContent = data.date || '';
+        var records = data.records || {};
+        var keys = Object.keys(records);
+        if (!keys.length) { el.innerHTML = '<div class="empty-state">暂无签到记录</div>'; return; }
+
+        var h = '<div class="status-list">';
+        keys.forEach(function(refId) {
+            var items = records[refId];
+            h += '<div class="status-card"><div class="status-title"><span class="platform-tag tag-tajiduo" style="font-size:10px">账号</span>' + escapeHtml(refId) + '</div><div class="status-items">';
+            items.forEach(function(item) {
+                var label = KIND_LABELS[item.kind] || item.kind;
+                h += '<div class="status-item"><span class="status-dot dot-ok"></span>' + escapeHtml(label) + '</div>';
+            });
+            h += '</div></div>';
+        });
+        h += '</div>';
+        el.innerHTML = h;
+    }).catch(function() { $('my-status-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+// ── My Sign ──
+function doMySign() {
+    var btn = $('btn-my-sign');
+    var logEl = $('my-sign-log');
+    btn.disabled = true; btn.textContent = '签到中...';
+    logEl.innerHTML = ''; logEl.classList.add('show');
+
+    apiFetch('/api/my/sign', {method: 'POST', stream: true}).then(function(resp) {
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function read() {
+            return reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                lines.forEach(function(line) {
+                    if (line.indexOf('data: ') !== 0) return;
+                    try {
+                        var d = JSON.parse(line.slice(6));
+                        var cls = d.type === 'error' ? 'e' : d.type === 'skip' ? 's' : d.type === 'progress' ? 'p' : d.type === 'done' ? 'd' : '';
+                        logEl.innerHTML += '<div class="' + cls + '">' + escapeHtml(d.msg) + '</div>';
+                        logEl.scrollTop = logEl.scrollHeight;
+                        if (d.done) loadMyStatus();
+                    } catch(e) {}
+                });
+                return read();
+            });
+        }
+        return read();
+    }).catch(function(e) { logEl.innerHTML += '<div class="e">请求失败: ' + escapeHtml(e.message) + '</div>'; })
+    .finally(function() { btn.disabled = false; btn.textContent = '开始签到'; });
+}
+
+// ── My Notify ──
+function loadMyNotify() {
+    apiFetch('/api/my/notify').then(function(data) {
+        var el = $('my-notify-section');
+        var h = '<div class="form-group"><label>Server酱 SCKEY</label><input type="text" id="notify-sckey" value="' + escapeHtml(data.serverchan_sckey || '') + '" placeholder="SCT..."></div>';
+        h += '<div class="form-group"><label>Telegram Bot Token</label><input type="text" id="notify-tg-token" value="' + escapeHtml(data.telegram_bot_token || '') + '" placeholder="123456:ABC..."></div>';
+        h += '<div class="form-group"><label>Telegram Chat ID</label><input type="text" id="notify-tg-chat" value="' + escapeHtml(data.telegram_chat_id || '') + '" placeholder="@channel"></div>';
+        h += '<div class="form-row">';
+        h += '<button class="btn-primary btn-sm" onclick="saveMyNotify()">保存配置</button>';
+        h += '<label class="toggle" style="margin-left:12px"><span class="toggle-track' + (data.enabled ? ' on' : '') + '" id="notify-toggle"></span>推送通知</label>';
+        h += '<button class="btn-outline btn-sm" style="margin-left:auto" onclick="testMyNotify()">测试推送</button></div>';
+        h += '<div id="my-notify-msg" class="msg"></div>';
+        el.innerHTML = h;
+
+        $('notify-toggle').onclick = function() {
+            var on = !this.classList.contains('on');
+            this.classList.toggle('on', on);
+            saveMyNotify();
+        };
+    }).catch(function() { $('my-notify-section').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function saveMyNotify() {
+    var body = {
+        enabled: $('notify-toggle').classList.contains('on'),
+        serverchan_sckey: $('notify-sckey').value.trim(),
+        telegram_bot_token: $('notify-tg-token').value.trim(),
+        telegram_chat_id: $('notify-tg-chat').value.trim(),
+    };
+    apiFetch('/api/my/notify', {method: 'PUT', body: body}).then(function(data) {
+        showMsg('my-notify-msg', data.msg, data.ok);
+    }).catch(function(e) { showMsg('my-notify-msg', '保存失败: ' + e.message, false); });
+}
+
+function testMyNotify() {
+    saveMyNotify();
+    apiFetch('/api/my/notify/test', {method: 'POST'}).then(function(data) {
+        showMsg('my-notify-msg', data.msg, data.ok);
+    }).catch(function(e) { showMsg('my-notify-msg', '测试失败: ' + e.message, false); });
+}
+
+// ── My Schedule ──
+function loadMySchedule() {
+    apiFetch('/api/my/schedule').then(function(data) {
+        var el = $('my-schedule-section');
+        var enabled = data.enabled || false;
+        var time = data.time || '06:00';
+        var h = '<div class="schedule-status">';
+        h += '<div class="sched-dot ' + (enabled ? 'sched-on' : 'sched-off') + '" id="sched-dot"></div>';
+        h += '<div><div class="sched-text">' + (enabled ? '已启用 · 每天 ' + time : '未启用') + '</div><div class="sched-detail">定时自动签到</div></div></div>';
+        h += '<div class="form-row">';
+        h += '<input type="time" id="my-sched-time" value="' + time + '">';
+        h += '<button class="btn-success btn-sm" onclick="toggleMySchedule(true)">启用</button>';
+        h += '<button class="btn-danger btn-sm" onclick="toggleMySchedule(false)">关闭</button>';
+        h += '<button class="btn-primary btn-sm" onclick="saveMySchedule()">保存</button></div>';
+        h += '<div id="my-schedule-msg" class="msg"></div>';
+        el.innerHTML = h;
+    }).catch(function() { $('my-schedule-section').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function toggleMySchedule(enabled) {
+    var time = $('my-sched-time').value || '06:00';
+    apiFetch('/api/my/schedule', {method: 'PUT', body: {enabled: enabled, time: time}}).then(function(data) {
+        showMsg('my-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadMySchedule();
+    }).catch(function(e) { showMsg('my-schedule-msg', '操作失败: ' + e.message, false); });
+}
+
+function saveMySchedule() {
+    var time = $('my-sched-time').value;
+    if (!time) { showMsg('my-schedule-msg', '请选择时间', false); return; }
+    var enabled = $('sched-dot').classList.contains('sched-on');
+    apiFetch('/api/my/schedule', {method: 'PUT', body: {enabled: enabled, time: time}}).then(function(data) {
+        showMsg('my-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadMySchedule();
+    }).catch(function(e) { showMsg('my-schedule-msg', '保存失败: ' + e.message, false); });
+}
+
+// ── Admin: Users ──
+function loadAdminUsers() {
+    apiFetch('/api/admin/users').then(function(data) {
+        var el = $('admin-user-list');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">暂无用户</div>'; return; }
+        var h = '<table class="tbl"><thead><tr><th>用户名</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead><tbody>';
+        data.forEach(function(u) {
+            h += '<tr><td>' + escapeHtml(u.username) + '</td><td>' + (u.is_admin ? '<span class="badge badge-blue">管理员</span>' : '用户') +
+                '</td><td class="text-muted text-sm">' + (u.created_at || '') + '</td>' +
+                '<td><button class="btn-outline btn-xs" onclick="showUserDetail(' + u.id + ', \'' + escapeHtml(u.username) + '\')">详情</button></td></tr>';
+        });
+        h += '</tbody></table>';
+        el.innerHTML = h;
+    }).catch(function() { $('admin-user-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function showUserDetail(id, name) {
+    apiFetch('/api/admin/accounts?user_id=' + id).then(function(accounts) {
+        var accInfo = accounts.length ? accounts.map(function(a) {
+            return a.platform === 'kuro' ? '库洛(' + a.game + '): ' + a.uid : '塔吉多: ' + (a.center_uid ? a.center_uid.substring(0, 12) + '...' : '?');
+        }).join('\n') : '(无账号)';
+        alert('用户: ' + name + '\n账号数: ' + accounts.length + '\n' + accInfo);
+    });
+}
+
+// ── Admin: Accounts ──
+function loadAdminAccounts() {
+    apiFetch('/api/admin/accounts').then(function(data) {
+        var el = $('admin-account-list');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">暂无账号</div>'; return; }
+        var h = '<table class="tbl"><thead><tr><th>用户</th><th>平台</th><th>标识</th></tr></thead><tbody>';
+        data.forEach(function(a) {
+            var tag = a.platform === 'kuro' ? 'tag-kuro' : 'tag-tajiduo';
+            var label = a.platform === 'kuro' ? '库洛' : '塔吉多';
+            h += '<tr><td>' + escapeHtml(a.username) + '</td><td><span class="platform-tag ' + tag + '">' + label + '</span></td><td class="text-muted text-sm">' +
+                (a.platform === 'kuro' ? (a.uid || '?') + ' (' + (a.game || '?') + ')' : (a.center_uid ? a.center_uid.substring(0, 16) + '...' : '?')) + '</td></tr>';
+        });
+        h += '</tbody></table>';
+        el.innerHTML = h;
+    }).catch(function() { $('admin-account-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+// ── Admin: Status ──
+function loadAdminStatus() {
+    apiFetch('/api/admin/status').then(function(data) {
+        var el = $('admin-status-list');
+        var records = data.records || {};
+        var keys = Object.keys(records);
+        if (!keys.length) { el.innerHTML = '<div class="empty-state">' + (data.date || '') + ' 暂无签到记录</div>'; return; }
+        var h = '<div class="status-list">';
+        keys.forEach(function(refId) {
+            var items = records[refId];
+            h += '<div class="status-card"><div class="status-title">' + escapeHtml(refId) + '</div><div class="status-items">';
+            items.forEach(function(item) {
+                var label = KIND_LABELS[item.kind] || item.kind;
+                h += '<div class="status-item"><span class="status-dot dot-ok"></span>' + escapeHtml(label) + '</div>';
+            });
+            h += '</div></div>';
+        });
+        h += '</div>';
+        el.innerHTML = h;
+    }).catch(function() { $('admin-status-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+// ── Admin: Sign ──
+function doAdminSign() {
+    var btn = $('btn-admin-sign');
+    var logEl = $('admin-sign-log');
+    btn.disabled = true; btn.textContent = '签到中...';
+    logEl.innerHTML = ''; logEl.classList.add('show');
+
+    apiFetch('/api/admin/sign', {method: 'POST', stream: true}).then(function(resp) {
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function read() {
+            return reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                lines.forEach(function(line) {
+                    if (line.indexOf('data: ') !== 0) return;
+                    try {
+                        var d = JSON.parse(line.slice(6));
+                        var cls = d.type === 'error' ? 'e' : d.type === 'skip' ? 's' : d.type === 'progress' ? 'p' : d.type === 'done' ? 'd' : '';
+                        logEl.innerHTML += '<div class="' + cls + '">' + escapeHtml(d.msg) + '</div>';
+                        logEl.scrollTop = logEl.scrollHeight;
+                        if (d.done) { loadAdminStatus(); loadMyStatus(); }
+                    } catch(e) {}
+                });
+                return read();
+            });
+        }
+        return read();
+    }).catch(function(e) { logEl.innerHTML += '<div class="e">请求失败: ' + escapeHtml(e.message) + '</div>'; })
+    .finally(function() { btn.disabled = false; btn.textContent = '执行全部签到'; });
+}
+
+// ── Admin: Schedules ──
+function loadAdminSchedules() {
+    apiFetch('/api/admin/schedules').then(function(data) {
+        var el = $('admin-schedule-list');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">暂无用户</div>'; return; }
+        var h = '<table class="tbl"><thead><tr><th>用户名</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>';
+        data.forEach(function(s) {
+            var label = s.enabled ? '<span style="color:#34c759">已启用</span>' : '<span style="color:#aeaeb2">未启用</span>';
+            h += '<tr><td>' + escapeHtml(s.username) + '</td><td>' + label + '</td>' +
+                '<td><input type="time" value="' + (s.time || '06:00') + '" id="sched-time-' + s.user_id + '" style="width:100px;padding:6px 10px" onchange="updateSingleSchedule(' + s.user_id + ')"></td>' +
+                '<td><button class="' + (s.enabled ? 'btn-danger' : 'btn-success') + ' btn-xs" onclick="toggleUserSchedule(' + s.user_id + ', ' + !s.enabled + ')">' + (s.enabled ? '关闭' : '启用') + '</button></td></tr>';
+        });
+        h += '</tbody></table>';
+        el.innerHTML = h;
+    }).catch(function() { $('admin-schedule-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function updateSingleSchedule(uid) {
+    var timeEl = $('sched-time-' + uid);
+    if (!timeEl) return;
+    apiFetch('/api/admin/schedules').then(function(data) {
+        var u = data.find(function(s) { return s.user_id === uid; });
+        return apiFetch('/api/admin/schedules/' + uid, {method: 'PUT', body: {enabled: u ? u.enabled : false, time: timeEl.value}});
+    }).then(function(data) { showMsg('admin-schedule-msg', data.msg, data.ok); })
+    .catch(function(e) { showMsg('admin-schedule-msg', '保存失败: ' + e.message, false); });
+}
+
+function toggleUserSchedule(uid, on) {
+    var timeEl = $('sched-time-' + uid);
+    var time = timeEl ? timeEl.value : '06:00';
+    apiFetch('/api/admin/schedules/' + uid, {method: 'PUT', body: {enabled: on, time: time}}).then(function(data) {
+        showMsg('admin-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadAdminSchedules();
+    }).catch(function(e) { showMsg('admin-schedule-msg', '操作失败: ' + e.message, false); });
+}
+
+function batchUpdateSchedules() {
+    var t = $('batch-sched-time').value;
+    if (!t) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
+    if (!confirm('确定将所有用户定时设为 ' + t + ' 并启用？')) return;
+    apiFetch('/api/admin/schedules/batch', {method: 'POST', body: {enabled: true, time: t}}).then(function(data) {
+        showMsg('admin-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadAdminSchedules();
+    }).catch(function(e) { showMsg('admin-schedule-msg', '操作失败: ' + e.message, false); });
+}
+
+function batchEnableSchedules() {
+    var t = $('batch-sched-time').value;
+    if (!t) { showMsg('admin-schedule-msg', '请选择时间', false); return; }
+    if (!confirm('确定开启所有用户定时？时间: ' + t)) return;
+    apiFetch('/api/admin/schedules/batch', {method: 'POST', body: {enabled: true, time: t}}).then(function(data) {
+        showMsg('admin-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadAdminSchedules();
+    }).catch(function(e) { showMsg('admin-schedule-msg', '操作失败: ' + e.message, false); });
+}
+
+function batchDisableSchedules() {
+    if (!confirm('确定关闭所有用户定时？')) return;
+    apiFetch('/api/admin/schedules/batch', {method: 'POST', body: {enabled: false, time: '06:00'}}).then(function(data) {
+        showMsg('admin-schedule-msg', data.msg, data.ok);
+        if (data.ok) loadAdminSchedules();
+    }).catch(function(e) { showMsg('admin-schedule-msg', '操作失败: ' + e.message, false); });
+}
+
+// ── Admin: Notify ──
+function loadAdminNotify() {
+    apiFetch('/api/admin/users').then(function(users) {
+        var el = $('admin-notify-list');
+        if (!users.length) { el.innerHTML = '<div class="empty-state">暂无用户</div>'; return; }
+        var h = '<table class="tbl"><thead><tr><th>用户名</th><th>推送</th><th>操作</th></tr></thead><tbody>';
+        users.forEach(function(u) {
+            h += '<tr><td>' + escapeHtml(u.username) + '</td><td id="notify-status-' + u.id + '" class="text-muted text-sm">加载中...</td>' +
+                '<td><button class="btn-outline btn-xs" onclick="showNotifyEdit(' + u.id + ', \'' + escapeHtml(u.username) + '\')">编辑</button></td></tr>';
+        });
+        h += '</tbody></table>';
+        el.innerHTML = h;
+        users.forEach(function(u) {
+            apiFetch('/api/admin/users/' + u.id + '/notify').then(function(d) {
+                var sEl = $('notify-status-' + u.id);
+                if (!sEl) return;
+                var svc = [];
+                if (d.serverchan_sckey) svc.push('Server酱');
+                if (d.telegram_bot_token) svc.push('Telegram');
+                sEl.innerHTML = d.enabled ? '<span style="color:#34c759;font-weight:500">已启用</span>' + (svc.length ? ' (' + svc.join('+') + ')' : '') : '<span style="color:#aeaeb2">未启用</span>';
+            });
+        });
+    }).catch(function() { $('admin-notify-list').innerHTML = '<div class="empty-state">加载失败</div>'; });
+}
+
+function showNotifyEdit(uid, name) {
+    apiFetch('/api/admin/users/' + uid + '/notify').then(function(d) {
+        var sckey = d.serverchan_sckey || ''; var tg = d.telegram_bot_token || ''; var chat = d.telegram_chat_id || '';
+        alert('编辑「' + name + '」的推送配置\n\n状态: ' + (d.enabled ? '已启用' : '未启用') +
+            '\nServer酱: ' + (sckey ? sckey.substring(0, 8) + '...' : '(空)') +
+            '\nTelegram: ' + (tg ? tg.substring(0, 8) + '...' : '(空)') + ' / Chat: ' + (chat || '(空)'));
+    });
+}
+
+// ── Update ──
+function doUpdate() {
+    var btn = $('btn-update');
+    var dot = $('update-dot');
+    var text = $('update-status-text');
+    var detail = $('update-status-detail');
+    btn.disabled = true; btn.textContent = '更新中...';
+    dot.className = 'sched-dot'; text.textContent = '正在拉取更新...';
+    detail.textContent = '完成后服务会自动重启';
+
+    apiFetch('/api/update', {method: 'POST'}).then(function(d) {
+        showMsg('update-msg', d.msg, d.ok);
+        if (d.ok) {
+            dot.className = 'sched-dot sched-on'; text.textContent = '更新完成';
+            detail.textContent = (d.msg || '').split('\n')[0];
+            setTimeout(function() { location.reload(); }, 8000);
+        } else {
+            dot.className = 'sched-dot sched-off'; text.textContent = '更新失败'; detail.textContent = d.msg;
+        }
+        btn.disabled = false; btn.textContent = '检查更新';
+    }).catch(function(e) {
+        showMsg('update-msg', '更新失败: ' + e.message, false);
+        dot.className = 'sched-dot sched-off'; text.textContent = '更新失败'; detail.textContent = e.message;
+        btn.disabled = false; btn.textContent = '检查更新';
+    });
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+    onAddPlatformChange();
+    checkAuth();
+});
+</script>
 </body>
 </html>
